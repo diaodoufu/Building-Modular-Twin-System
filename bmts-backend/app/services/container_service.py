@@ -10,6 +10,38 @@ from sqlalchemy.orm import selectinload
 from app.models.models import Container, Organization
 from app.schemas.schemas import ContainerCreate, ContainerUpdate
 
+# 允许的层级关系：parent_type → [allowed child types]
+HIERARCHY_RULES: dict[str | None, list[str]] = {
+    None: ["campus"],              # 顶层只能是 campus
+    "campus": ["building"],
+    "building": ["floor"],
+    "floor": ["room"],
+    "room": ["resource"],
+    "resource": [],                # resource 无子级
+}
+
+
+async def _validate_hierarchy(db: AsyncSession, parent_id: UUID | None, child_type: str) -> None:
+    """校验容器层级约束"""
+    if child_type not in {"campus", "building", "floor", "room", "resource"}:
+        raise ValueError(f"不支持的容器类型: {child_type}")
+
+    if parent_id is None:
+        # 无父容器，只允许 campus
+        if child_type not in HIERARCHY_RULES[None]:
+            raise ValueError(f"顶层容器只能是 campus，不能是 {child_type}")
+        return
+
+    # 查询父容器类型
+    result = await db.execute(select(Container.type).where(Container.id == parent_id))
+    parent_type = result.scalar_one_or_none()
+    if not parent_type:
+        raise ValueError(f"父容器 {parent_id} 不存在")
+
+    allowed = HIERARCHY_RULES.get(parent_type, [])
+    if child_type not in allowed:
+        raise ValueError(f"{parent_type} 下只能创建 {allowed}，不能创建 {child_type}")
+
 
 async def get_containers(
     db: AsyncSession,
@@ -58,6 +90,18 @@ async def create_container(db: AsyncSession, data: ContainerCreate) -> Container
     org_result = await db.execute(select(Organization).where(Organization.id == data.org_id))
     if not org_result.scalar_one_or_none():
         raise ValueError(f"组织 {data.org_id} 不存在")
+
+    # 校验层级约束
+    await _validate_hierarchy(db, data.parent_id, data.type)
+
+    # 校验parent_id与org_id一致（防止跨组织挂载）
+    if data.parent_id is not None:
+        parent_result = await db.execute(
+            select(Container.org_id).where(Container.id == data.parent_id)
+        )
+        parent_org_id = parent_result.scalar_one_or_none()
+        if parent_org_id and parent_org_id != data.org_id:
+            raise ValueError("父容器必须属于同一组织")
 
     container = Container(
         org_id=data.org_id,

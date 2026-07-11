@@ -80,6 +80,11 @@ class OrganizationRead(BaseModel):
 
 # ============ 用户 Schemas ============
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -98,6 +103,7 @@ class UserRead(BaseModel):
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
 
 

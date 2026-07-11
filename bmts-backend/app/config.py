@@ -1,3 +1,6 @@
+import secrets
+import warnings
+
 from pydantic_settings import BaseSettings
 
 
@@ -11,10 +14,11 @@ class Settings(BaseSettings):
     # 数据库（PostgreSQL）
     DATABASE_URL: str = "postgresql+asyncpg://postgres:tf6y2l27@localhost:5432/bmts"
 
-    # JWT
-    SECRET_KEY: str = "bmts-dev-secret-key-change-in-production"
+    # JWT — 生产环境务必通过环境变量设置SECRET_KEY
+    SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24h
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30       # access token 30分钟
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7          # refresh token 7天
 
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
@@ -24,3 +28,12 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# 未设置SECRET_KEY时自动生成（仅限开发环境）
+if not settings.SECRET_KEY:
+    settings.SECRET_KEY = secrets.token_urlsafe(32)
+    if settings.DEBUG:
+        warnings.warn(
+            "SECRET_KEY 未设置，已自动生成临时密钥。生产环境请通过环境变量 SECRET_KEY 设置固定密钥！",
+            stacklevel=2,
+        )

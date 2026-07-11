@@ -1,9 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { containerApi, type ContainerTreeNode, type ContainerRead } from '../api/containers'
-
-// 临时硬编码org_id，后续从登录用户获取
-const DEFAULT_ORG_ID = '4d63c66c-faac-4830-9d6f-3a8fea13b176'
+import { useAuthStore } from './auth'
 
 export const useContainerStore = defineStore('container', () => {
   const tree = ref<ContainerTreeNode[]>([])
@@ -11,9 +9,14 @@ export const useContainerStore = defineStore('container', () => {
   const selectedBuilding = ref<ContainerTreeNode | null>(null)
   const selectedFloor = ref<ContainerRead | null>(null)
   const loading = ref(false)
-  const orgId = ref(DEFAULT_ORG_ID)
+
+  const orgId = computed(() => {
+    const auth = useAuthStore()
+    return auth.currentOrgId || ''
+  })
 
   async function fetchTree() {
+    if (!orgId.value) return
     loading.value = true
     try {
       const { data } = await containerApi.tree(orgId.value)

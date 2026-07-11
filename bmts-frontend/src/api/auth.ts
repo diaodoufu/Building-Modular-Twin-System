@@ -10,6 +10,7 @@ export interface UserRead {
 
 export interface TokenResponse {
   access_token: string
+  refresh_token: string
   token_type: string
 }
 
@@ -22,5 +23,8 @@ export const authApi = {
   },
   me() {
     return api.get<UserRead>('/auth/me')
+  },
+  refresh(refreshToken: string) {
+    return api.post<TokenResponse>('/auth/refresh', { refresh_token: refreshToken })
   },
 }

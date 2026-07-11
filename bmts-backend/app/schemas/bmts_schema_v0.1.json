@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bmts.dev/schema/v0.1",
+  "title": "BMTS Schema v0.1",
+  "description": "Building Modular Twin System - 建筑模块化孪生系统数据规范",
+  "type": "object",
+  "required": ["version", "campus"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Schema版本号"
+    },
+    "campus": {
+      "$ref": "#/$defs/campus"
+    }
+  },
+  "$defs": {
+    "campus": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "name": { "type": "string", "minLength": 1 },
+        "baseAttrs": {
+          "type": "object",
+          "properties": {
+            "address": { "type": "string" },
+            "areaSqm": { "type": "number", "minimum": 0 },
+            "description": { "type": "string" }
+          }
+        },
+        "extAttrs": { "type": "object" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/building" }
+        }
+      }
+    },
+    "building": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "name": { "type": "string", "minLength": 1 },
+        "baseAttrs": {
+          "type": "object",
+          "properties": {
+            "builtYear": { "type": "integer", "minimum": 1800 },
+            "totalFloors": { "type": "integer", "minimum": 1 },
+            "areaSqm": { "type": "number", "minimum": 0 }
+          }
+        },
+        "extAttrs": { "type": "object" },
+        "position": { "$ref": "#/$defs/position3d" },
+        "dimensions": { "$ref": "#/$defs/dimensions3d" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/floor" }
+        }
+      }
+    },
+    "floor": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "name": { "type": "string", "minLength": 1 },
+        "baseAttrs": {
+          "type": "object",
+          "properties": {
+            "level": { "type": "integer", "minimum": -5, "maximum": 200 },
+            "heightM": { "type": "number", "minimum": 2, "maximum": 20 },
+            "areaSqm": { "type": "number", "minimum": 0 }
+          }
+        },
+        "extAttrs": { "type": "object" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/room" }
+        }
+      }
+    },
+    "room": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "name": { "type": "string", "minLength": 1 },
+        "baseAttrs": {
+          "type": "object",
+          "properties": {
+            "roomNumber": { "type": "string" },
+            "areaSqm": { "type": "number", "minimum": 0 },
+            "capacity": { "type": "integer", "minimum": 0 },
+            "roomType": { "type": "string", "enum": ["classroom", "lab", "office", "meeting", "library", "dormitory", "utility", "other"] }
+          }
+        },
+        "extAttrs": { "type": "object" },
+        "position": { "$ref": "#/$defs/position3d" },
+        "dimensions": { "$ref": "#/$defs/dimensions3d" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resource" }
+        }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "name": { "type": "string", "minLength": 1 },
+        "baseAttrs": {
+          "type": "object",
+          "properties": {
+            "resourceType": { "type": "string" },
+            "status": { "type": "string", "enum": ["available", "in_use", "maintenance", "retired"] }
+          }
+        },
+        "extAttrs": { "type": "object" },
+        "position": { "$ref": "#/$defs/position3d" },
+        "dimensions": { "$ref": "#/$defs/dimensions3d" }
+      }
+    },
+    "position3d": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "dimensions3d": {
+      "type": "object",
+      "properties": {
+        "width": { "type": "number", "minimum": 0 },
+        "height": { "type": "number", "minimum": 0 },
+        "depth": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

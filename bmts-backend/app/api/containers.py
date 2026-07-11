@@ -3,9 +3,12 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.auth import get_current_user
 from app.database import get_db
+from app.models.models import Container, OrganizationMember, User
 from app.schemas.schemas import (
     ContainerCreate, ContainerRead, ContainerTreeNode, ContainerUpdate,
 )
@@ -15,6 +18,24 @@ from app.services.container_service import (
 )
 
 router = APIRouter()
+
+
+async def _require_org_member(
+    org_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """要求用户为指定组织的成员（含admin/owner）"""
+    result = await db.execute(
+        select(OrganizationMember).where(
+            OrganizationMember.org_id == org_id,
+            OrganizationMember.user_id == current_user.id,
+        )
+    )
+    membership = result.scalar_one_or_none()
+    if not membership:
+        raise HTTPException(status_code=403, detail="无权操作该组织的容器")
+    return current_user
 
 
 @router.get("", response_model=list[ContainerRead])
@@ -34,9 +55,6 @@ async def get_tree(
     db: AsyncSession = Depends(get_db),
 ):
     """获取容器树 - 返回扁平列表，前端自行构建树"""
-    from sqlalchemy import select
-    from app.models.models import Container
-
     stmt = select(Container).where(Container.org_id == org_id).order_by(Container.sort_order, Container.name)
     result = await db.execute(stmt)
     all_containers = result.scalars().all()
@@ -77,7 +95,12 @@ async def list_children(container_id: UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("", response_model=ContainerRead, status_code=201)
-async def create_one(data: ContainerCreate, db: AsyncSession = Depends(get_db)):
+async def create_one(
+    data: ContainerCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    await _require_org_member(data.org_id, current_user, db)
     try:
         return await create_container(db, data)
     except ValueError as e:
@@ -85,7 +108,18 @@ async def create_one(data: ContainerCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.put("/{container_id}", response_model=ContainerRead)
-async def update_one(container_id: UUID, data: ContainerUpdate, db: AsyncSession = Depends(get_db)):
+async def update_one(
+    container_id: UUID,
+    data: ContainerUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # 查找容器所属组织，校验权限
+    existing = await get_container(db, container_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="容器不存在")
+    await _require_org_member(existing.org_id, current_user, db)
+
     container = await update_container(db, container_id, data)
     if not container:
         raise HTTPException(status_code=404, detail="容器不存在")
@@ -93,6 +127,16 @@ async def update_one(container_id: UUID, data: ContainerUpdate, db: AsyncSession
 
 
 @router.delete("/{container_id}", status_code=204)
-async def delete_one(container_id: UUID, db: AsyncSession = Depends(get_db)):
+async def delete_one(
+    container_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # 查找容器所属组织，校验权限
+    existing = await get_container(db, container_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="容器不存在")
+    await _require_org_member(existing.org_id, current_user, db)
+
     if not await delete_container(db, container_id):
         raise HTTPException(status_code=404, detail="容器不存在")

@@ -22,6 +22,9 @@ export const reservationApi = {
   list(params?: { room_id?: string; user_id?: string; status?: string }) {
     return api.get<ReservationRead[]>('/reservations', { params })
   },
+  pending() {
+    return api.get<ReservationRead[]>('/reservations/pending')
+  },
   my() {
     return api.get<ReservationRead[]>('/reservations/my')
   },
@@ -34,10 +37,16 @@ export const reservationApi = {
   create(data: { room_id: string; title?: string; start_time: string; end_time: string }) {
     return api.post<ReservationRead>('/reservations', data)
   },
-  update(id: string, data: any) {
+  update(id: string, data: { title?: string; start_time?: string; end_time?: string; status?: string }) {
     return api.put<ReservationRead>(`/reservations/${id}`, data)
   },
   cancel(id: string) {
     return api.post<ReservationRead>(`/reservations/${id}/cancel`)
+  },
+  approve(id: string) {
+    return api.post<ReservationRead>(`/reservations/${id}/approve`)
+  },
+  reject(id: string) {
+    return api.post<ReservationRead>(`/reservations/${id}/reject`)
   },
 }

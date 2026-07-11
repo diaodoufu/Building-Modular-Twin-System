@@ -21,8 +21,8 @@ export interface ContainerTreeNode extends ContainerRead {
 
 export const containerApi = {
   list(orgId: string, parentId?: string | null, type?: string | null) {
-    const params: any = { org_id: orgId }
-    if (parentId !== undefined) params.parent_id = parentId
+    const params: Record<string, string> = { org_id: orgId }
+    if (parentId !== undefined && parentId !== null) params.parent_id = parentId
     if (type) params.type = type
     return api.get<ContainerRead[]>('/containers', { params })
   },
@@ -35,10 +35,10 @@ export const containerApi = {
   children(id: string) {
     return api.get<ContainerRead[]>(`/containers/${id}/children`)
   },
-  create(data: any) {
+  create(data: { org_id: string; type: string; name: string; parent_id?: string | null; sort_order?: number; base_attrs?: Record<string, any>; ext_attrs?: Record<string, any>; position?: Record<string, number>; dimensions?: Record<string, number> }) {
     return api.post<ContainerRead>('/containers', data)
   },
-  update(id: string, data: any) {
+  update(id: string, data: { name?: string; sort_order?: number; base_attrs?: Record<string, any>; ext_attrs?: Record<string, any>; position?: Record<string, number>; dimensions?: Record<string, number> }) {
     return api.put<ContainerRead>(`/containers/${id}`, data)
   },
   delete(id: string) {

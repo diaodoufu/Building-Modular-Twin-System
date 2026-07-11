@@ -1,11 +1,15 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, Text, DateTime, ForeignKey, Integer, UniqueConstraint, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class Organization(Base):
@@ -21,8 +25,8 @@ class Organization(Base):
     logo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     base_attrs: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     ext_attrs: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     members: Mapped[list["OrganizationMember"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
     containers: Mapped[list["Container"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
@@ -39,7 +43,7 @@ class OrganizationMember(Base):
     org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="member")  # owner|admin|member
-    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     organization: Mapped["Organization"] = relationship(back_populates="members")
     user: Mapped["User"] = relationship(back_populates="org_memberships")
@@ -54,7 +58,7 @@ class User(Base):
     password: Mapped[str] = mapped_column(String(256), nullable=False)
     display_name: Mapped[str] = mapped_column(String(128), nullable=False)
     avatar: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     org_memberships: Mapped[list["OrganizationMember"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     reservations: Mapped[list["Reservation"]] = relationship(foreign_keys="Reservation.user_id", back_populates="user", cascade="all, delete-orphan")
@@ -83,8 +87,8 @@ class Container(Base):
     position: Mapped[dict | None] = mapped_column(JSONB, nullable=True)   # { x, y, z }
     dimensions: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # { width, height, depth }
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
 
     organization: Mapped["Organization"] = relationship(back_populates="containers")
     children: Mapped[list["Container"]] = relationship(back_populates="parent", cascade="all, delete-orphan")
@@ -108,8 +112,8 @@ class Reservation(Base):
     end_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")  # pending|approved|rejected|cancelled
     reviewed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     room: Mapped["Container"] = relationship(back_populates="reservations")
     user: Mapped["User"] = relationship(foreign_keys=[user_id], back_populates="reservations")
-    reviewer: Mapped["User | None"] = relationship(foreign_keys=[reviewed_by])
+    reviewer: Mapped["User | None"] = relationship(foreign_keys=[reviewed_by], back_populates="reviewed_reservations")

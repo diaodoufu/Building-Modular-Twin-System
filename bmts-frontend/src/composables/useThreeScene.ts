@@ -23,6 +23,8 @@ export function useThreeScene(container: Ref<HTMLElement | undefined>) {
   const roomMeshes: Map<string, THREE.Mesh> = new Map()
   const highlightedRoom = ref<string | null>(null)
   const onRoomClick = ref<((roomId: string) => void) | null>(null)
+  const onGroundClick = ref<((x: number, z: number) => void) | null>(null)
+  let ground: THREE.Mesh | null = null
 
   function init() {
     if (!container.value) return
@@ -66,9 +68,10 @@ export function useThreeScene(container: Ref<HTMLElement | undefined>) {
       color: 0x0d1f3c,
       roughness: 0.9
     })
-    const ground = new THREE.Mesh(groundGeo, groundMat)
+    ground = new THREE.Mesh(groundGeo, groundMat)
     ground.rotation.x = -Math.PI / 2
     ground.receiveShadow = true
+    ground.userData = { isGround: true }
     scene.add(ground)
 
     // 网格辅助线
@@ -120,19 +123,23 @@ export function useThreeScene(container: Ref<HTMLElement | undefined>) {
 
     raycaster.setFromCamera(mouse, camera)
     const meshArray = Array.from(roomMeshes.values())
-    const intersects = raycaster.intersectObjects(meshArray)
+    const allObjects = ground ? [...meshArray, ground] : meshArray
+    const intersects = raycaster.intersectObjects(allObjects)
 
     if (intersects.length > 0) {
-      const mesh = intersects[0].object as THREE.Mesh
-      const roomId = mesh.userData.roomId
-      if (roomId) {
-        // 取消之前的高亮
-        if (highlightedRoom.value && highlightedRoom.value !== roomId) {
+      const hit = intersects[0]
+      const mesh = hit.object as THREE.Mesh
+
+      if (mesh.userData?.isGround && hit.point) {
+        // 点击了地面
+        onGroundClick.value?.(Math.round(hit.point.x * 2) / 2, Math.round(hit.point.z * 2) / 2)
+      } else if (mesh.userData?.roomId) {
+        // 点击了房间
+        if (highlightedRoom.value && highlightedRoom.value !== mesh.userData.roomId) {
           resetRoomColor(highlightedRoom.value)
         }
-        // 高亮当前房间
-        highlightRoom(roomId)
-        onRoomClick.value?.(roomId)
+        highlightRoom(mesh.userData.roomId)
+        onRoomClick.value?.(mesh.userData.roomId)
       }
     }
   }
@@ -148,7 +155,7 @@ export function useThreeScene(container: Ref<HTMLElement | undefined>) {
     return colors[type] || colors.default
   }
 
-  function buildFloorRooms(rooms: RoomData[], floorLevel: number, floorHeight: number = 4) {
+  function buildFloorRooms(rooms: RoomData[], floorLevel: number, floorHeight: number = 4, occupiedRoomIds: Set<string> = new Set()) {
     // 清除旧的房间mesh
     roomMeshes.forEach((mesh) => scene.remove(mesh))
     roomMeshes.clear()
@@ -164,11 +171,12 @@ export function useThreeScene(container: Ref<HTMLElement | undefined>) {
       const pz = room.position?.z || 0
 
       const geometry = new THREE.BoxGeometry(w, h, d)
-      const color = getRoomColor(room.type || room.base_attrs?.room_type || 'default')
+      const isOccupied = occupiedRoomIds.has(room.id)
+      const color = isOccupied ? 0xef5350 : getRoomColor(room.type || room.base_attrs?.room_type || 'default')
       const material = new THREE.MeshStandardMaterial({
         color,
         transparent: true,
-        opacity: 0.85,
+        opacity: isOccupied ? 0.5 : 0.85,
         roughness: 0.4,
         metalness: 0.1,
       })
@@ -224,5 +232,6 @@ export function useThreeScene(container: Ref<HTMLElement | undefined>) {
     resetRoomColor,
     highlightedRoom,
     onRoomClick,
+    onGroundClick,
   }
 }
