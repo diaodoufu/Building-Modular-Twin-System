@@ -1,0 +1,8 @@
+[project]
+name = "bmts-backend"
+version = "0.1.0"
+description = "Building Modular Twin System - Backend"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
