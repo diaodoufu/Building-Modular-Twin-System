@@ -4,8 +4,12 @@ import ssl
 
 from app.config import settings
 
-ssl_context = ssl.create_default_context()
-engine = create_async_engine(settings.DATABASE_URL, echo=settings.DEBUG, connect_args={"ssl": ssl_context})
+connect_args = {}
+if "railway.internal" not in settings.DATABASE_URL:
+    ssl_context = ssl.create_default_context()
+    connect_args = {"ssl": ssl_context}
+
+engine = create_async_engine(settings.DATABASE_URL, echo=settings.DEBUG, connect_args=connect_args)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
