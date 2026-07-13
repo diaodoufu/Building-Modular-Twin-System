@@ -5,8 +5,10 @@ import ssl
 from app.config import settings
 
 connect_args = {}
-if "railway.internal" not in settings.DATABASE_URL:
+if "railway.internal" not in settings.DATABASE_URL and "localhost" not in settings.DATABASE_URL:
     ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
     connect_args = {"ssl": ssl_context}
 
 engine = create_async_engine(settings.DATABASE_URL, echo=settings.DEBUG, connect_args=connect_args)
