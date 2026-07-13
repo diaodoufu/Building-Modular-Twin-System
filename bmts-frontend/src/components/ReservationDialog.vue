@@ -136,7 +136,7 @@ const endOptions = computed(() => {
 })
 
 function generateTimeOptions() {
-  const options = []
+  const options: { value: string; label: string; disabled?: boolean }[] = []
   for (let h = 8; h < 22; h++) {
     for (let m = 0; m < 60; m += 30) {
       const value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
