@@ -3,7 +3,7 @@
 from uuid import UUID
 
 import bcrypt
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import Organization, OrganizationMember, User
@@ -32,7 +32,7 @@ async def create_user(db: AsyncSession, username: str, password: str, display_na
     db.add(user)
     await db.flush()
 
-    count_result = await db.execute(select(User).count())
+    count_result = await db.execute(select(func.count(User.id)))
     user_count = count_result.scalar()
     if user_count == 1:
         org = Organization(name="默认组织", slug="default", org_type="campus")
