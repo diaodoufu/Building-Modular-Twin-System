@@ -26,6 +26,7 @@ class ContainerCreate(ContainerBase):
 
 class ContainerUpdate(BaseModel):
     name: str | None = None
+    parent_id: uuid.UUID | None = None
     sort_order: int | None = None
     base_attrs: dict[str, Any] | None = None
     ext_attrs: dict[str, Any] | None = None

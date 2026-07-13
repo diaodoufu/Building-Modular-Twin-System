@@ -3,7 +3,7 @@
     <div class="toolbar">
       <el-button type="info" text @click="router.push('/')">返回首页</el-button>
       <span class="toolbar-title">校园全景</span>
-      <el-button v-if="auth.isAdmin" type="success" size="small" @click="showAddBuilding = true">新建建筑</el-button>
+      <el-button v-if="auth.isAdmin" type="success" size="small" @click="openAddBuildingDialog">新建建筑</el-button>
     </div>
     <div class="canvas-wrapper" ref="canvasContainer"></div>
 
@@ -81,6 +81,16 @@ const addForm = ref({
   dimensions: { width: 25, height: 20, depth: 18 },
 })
 
+function openAddBuildingDialog() {
+  const buildings = campusData?.children || []
+  const nextPos = computeNextPosition(buildings)
+  if (nextPos) {
+    addForm.value.position.x = nextPos.x
+    addForm.value.position.z = nextPos.z
+  }
+  showAddBuilding.value = true
+}
+
 function parseValue(v: string) {
   if (v === '' || v === undefined) return ''
   const n = Number(v)
@@ -133,6 +143,10 @@ let ground: THREE.Mesh | null = null
 const buildingMeshes: Map<string, THREE.Mesh> = new Map()
 const buildingData: Map<string, ContainerTreeNode> = new Map()
 
+let draggingMesh: THREE.Mesh | null = null
+let dragPlane: THREE.Plane | null = null
+let dragOffset = new THREE.Vector3()
+
 function init() {
   if (!canvasContainer.value) return
 
@@ -183,6 +197,9 @@ function init() {
 
   renderer.domElement.addEventListener('click', onClick)
   renderer.domElement.addEventListener('mousemove', onMouseMove)
+  renderer.domElement.addEventListener('mousedown', onMouseDown)
+  renderer.domElement.addEventListener('mouseup', onMouseUp)
+  renderer.domElement.addEventListener('mouseleave', onMouseUp)
   window.addEventListener('resize', onResize)
 
   animate()
@@ -193,6 +210,9 @@ function dispose() {
   window.removeEventListener('resize', onResize)
   renderer?.domElement.removeEventListener('click', onClick)
   renderer?.domElement.removeEventListener('mousemove', onMouseMove)
+  renderer?.domElement.removeEventListener('mousedown', onMouseDown)
+  renderer?.domElement.removeEventListener('mouseup', onMouseUp)
+  renderer?.domElement.removeEventListener('mouseleave', onMouseUp)
   renderer?.dispose()
   if (canvasContainer.value && renderer) {
     canvasContainer.value.removeChild(renderer.domElement)
@@ -224,18 +244,11 @@ function getBuildingColor(name: string): number {
 }
 
 function buildCampus(buildings: ContainerTreeNode[]) {
-  // 清除旧建筑
   buildingMeshes.forEach(mesh => scene.remove(mesh))
   buildingMeshes.clear()
   buildingData.clear()
 
-  const spacing = 35
-  const rowSize = Math.ceil(Math.sqrt(buildings.length))
-
-  buildings.forEach((bld, idx) => {
-    const row = Math.floor(idx / rowSize)
-    const col = idx % rowSize
-
+  buildings.forEach(bld => {
     const w = bld.dimensions?.width || 20
     const h = bld.dimensions?.height || 18
     const d = bld.dimensions?.depth || 15
@@ -251,19 +264,19 @@ function buildCampus(buildings: ContainerTreeNode[]) {
     })
 
     const mesh = new THREE.Mesh(geometry, material)
-    const px = (col - rowSize / 2 + 0.5) * spacing
-    const pz = (row - Math.ceil(buildings.length / rowSize) / 2 + 0.5) * spacing
+
+    // 使用数据库保存的位置，若无则自动计算不冲突位置
+    const px = bld.position?.x ?? computeNextPosition(buildings, bld)?.x ?? 0
+    const pz = bld.position?.z ?? computeNextPosition(buildings, bld)?.z ?? 0
     mesh.position.set(px, h / 2, pz)
     mesh.castShadow = true
     mesh.receiveShadow = true
-    mesh.userData = { buildingId: bld.id }
+    mesh.userData = { buildingId: bld.id, buildingData: bld }
 
-    // 边框
     const edges = new THREE.EdgesGeometry(geometry)
     const lineMat = new THREE.LineBasicMaterial({ color: 0x8ab4f8, transparent: true, opacity: 0.8 })
     mesh.add(new THREE.LineSegments(edges, lineMat))
 
-    // 建筑名称标签（使用sprite）
     const canvas = document.createElement('canvas')
     canvas.width = 256
     canvas.height = 64
@@ -287,13 +300,36 @@ function buildCampus(buildings: ContainerTreeNode[]) {
     buildingData.set(bld.id, bld)
   })
 
-  // 调整相机
   camera.position.set(0, 80, 120)
   controls.target.set(0, 0, 0)
   controls.update()
 }
 
+function computeNextPosition(allBuildings: ContainerTreeNode[], excludeBld?: ContainerTreeNode): { x: number; z: number } {
+  const occupiedPositions: Set<string> = new Set()
+  const spacing = 35
+
+  for (const bld of allBuildings) {
+    if (bld === excludeBld) continue
+    if (bld.position?.x != null && bld.position?.z != null) {
+      occupiedPositions.add(`${bld.position.x},${bld.position.z}`)
+    }
+  }
+
+  let row = 0, col = 0
+  while (true) {
+    const px = (col - 1.5) * spacing
+    const pz = (row - 1.5) * spacing
+    if (!occupiedPositions.has(`${px},${pz}`)) {
+      return { x: px, z: pz }
+    }
+    col++
+    if (col >= 5) { col = 0; row++ }
+  }
+}
+
 function onClick(event: MouseEvent) {
+  if (draggingMesh) return
   if (!canvasContainer.value) return
   const rect = renderer.domElement.getBoundingClientRect()
   mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
@@ -308,7 +344,6 @@ function onClick(event: MouseEvent) {
     const hit = intersects[0]
     const obj = hit.object as THREE.Mesh
 
-    // 点击地面 → 管理员打开新建建筑对话框并填入坐标
     if (obj.userData?.isGround && hit.point) {
       if (auth.isAdmin) {
         addForm.value.position.x = Math.round(hit.point.x)
@@ -318,7 +353,6 @@ function onClick(event: MouseEvent) {
       return
     }
 
-    // 点击建筑 → 向上查找 buildingId
     let target: THREE.Mesh | null = obj
     while (target && !target.userData?.buildingId) {
       target = target.parent as THREE.Mesh
@@ -326,6 +360,58 @@ function onClick(event: MouseEvent) {
     if (target?.userData?.buildingId) {
       router.push({ name: 'building', params: { id: target.userData.buildingId } })
     }
+  }
+}
+
+function onMouseDown(event: MouseEvent) {
+  if (!auth.isAdmin) return
+  if (!canvasContainer.value) return
+
+  const rect = renderer.domElement.getBoundingClientRect()
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+  raycaster.setFromCamera(mouse, camera)
+  const meshArray = Array.from(buildingMeshes.values())
+  const intersects = raycaster.intersectObjects(meshArray, true)
+
+  if (intersects.length > 0) {
+    let obj = intersects[0].object as THREE.Mesh
+    while (obj && !obj.userData?.buildingId) {
+      obj = obj.parent as THREE.Mesh
+    }
+    if (obj?.userData?.buildingId) {
+      controls.enabled = false
+      draggingMesh = obj
+
+      dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+      const intersectPoint = new THREE.Vector3()
+      raycaster.ray.intersectPlane(dragPlane, intersectPoint)
+      if (intersectPoint) {
+        dragOffset.subVectors(draggingMesh.position, intersectPoint)
+      }
+    }
+  }
+}
+
+function onMouseUp() {
+  if (draggingMesh) {
+    const buildingId = draggingMesh.userData?.buildingId
+    if (buildingId) {
+      const bld = buildingData.get(buildingId)
+      if (bld) {
+        const newX = Math.round(draggingMesh.position.x)
+        const newZ = Math.round(draggingMesh.position.z)
+        if (newX !== bld.position?.x || newZ !== bld.position?.z) {
+          containerApi.update(buildingId, {
+            position: { x: newX, y: 0, z: newZ },
+          })
+        }
+      }
+    }
+    draggingMesh = null
+    dragPlane = null
+    controls.enabled = true
   }
 }
 
@@ -337,11 +423,22 @@ function onMouseMove(event: MouseEvent) {
   hoverX.value = event.clientX - rect.left + 15
   hoverY.value = event.clientY - rect.top - 10
 
+  // 拖拽中
+  if (draggingMesh && dragPlane) {
+    const intersectPoint = new THREE.Vector3()
+    raycaster.setFromCamera(mouse, camera)
+    if (raycaster.ray.intersectPlane(dragPlane, intersectPoint)) {
+      draggingMesh.position.copy(intersectPoint).add(dragOffset)
+      draggingMesh.position.x = Math.round(draggingMesh.position.x)
+      draggingMesh.position.z = Math.round(draggingMesh.position.z)
+    }
+    return
+  }
+
   raycaster.setFromCamera(mouse, camera)
   const meshArray = Array.from(buildingMeshes.values())
   const intersects = raycaster.intersectObjects(meshArray, true)
 
-  // 重置所有建筑颜色
   buildingMeshes.forEach(mesh => {
     const mat = mesh.material as THREE.MeshStandardMaterial
     mat.emissiveIntensity = 0

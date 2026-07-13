@@ -97,8 +97,11 @@
             <el-option label="设备/工位" value="resource" />
           </el-select>
         </el-form-item>
-        <el-form-item label="父容器" v-if="dialogMode === 'create'">
-          <el-input :model-value="dialogForm.parent_name" disabled />
+        <el-form-item label="父容器">
+          <el-select v-model="dialogForm.parent_id" placeholder="选择父容器" style="width: 100%">
+            <el-option :label="'无（顶层）'" :value="null" />
+            <el-option v-for="node in parentOptions" :key="node.id" :label="node.name" :value="node.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="dialogForm.sort_order" :min="0" />
@@ -229,6 +232,27 @@ const extAttrsList = computed(() => {
   return Object.entries(selectedNode.value.ext_attrs).map(([key, value]) => ({ key, value: JSON.stringify(value) }))
 })
 
+const parentOptions = computed(() => {
+  const options: { id: string; name: string; type: string }[] = []
+  const typeOrder: Record<string, number> = { campus: 0, building: 1, floor: 2, room: 3, resource: 4 }
+
+  function collect(node: ContainerTreeNode) {
+    options.push({ id: node.id, name: node.name, type: node.type })
+    if (node.children) {
+      for (const child of node.children) {
+        collect(child)
+      }
+    }
+  }
+
+  for (const root of treeData.value) {
+    collect(root)
+  }
+
+  options.sort((a, b) => (typeOrder[a.type] || 99) - (typeOrder[b.type] || 99))
+  return options
+})
+
 async function fetchTree() {
   const { data } = await containerApi.tree(ORG_ID.value)
   treeData.value = data
@@ -269,7 +293,7 @@ function openEditDialog(node: ContainerTreeNode) {
   dialogForm.value = {
     name: node.name,
     type: node.type,
-    parent_id: null,
+    parent_id: node.parent_id || null,
     parent_name: '',
     sort_order: node.sort_order || 0,
     baseAttrs: objToAttrs(node.base_attrs),
@@ -325,6 +349,7 @@ async function handleDialogSubmit() {
     } else {
       await containerApi.update(dialogForm.value.editing_id, {
         name: dialogForm.value.name,
+        parent_id: dialogForm.value.parent_id,
         sort_order: dialogForm.value.sort_order,
         base_attrs: baseAttrs,
         ext_attrs: extAttrs,

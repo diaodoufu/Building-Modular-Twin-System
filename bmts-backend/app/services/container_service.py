@@ -127,6 +127,19 @@ async def update_container(db: AsyncSession, container_id: UUID, data: Container
         return None
 
     update_data = data.model_dump(exclude_unset=True)
+
+    # 如果修改了 parent_id，需要校验层级约束和组织一致性
+    if 'parent_id' in update_data:
+        new_parent_id = update_data['parent_id']
+        await _validate_hierarchy(db, new_parent_id, container.type)
+        if new_parent_id is not None:
+            parent_result = await db.execute(
+                select(Container.org_id).where(Container.id == new_parent_id)
+            )
+            parent_org_id = parent_result.scalar_one_or_none()
+            if parent_org_id and parent_org_id != container.org_id:
+                raise ValueError("父容器必须属于同一组织")
+
     for key, value in update_data.items():
         setattr(container, key, value)
 
