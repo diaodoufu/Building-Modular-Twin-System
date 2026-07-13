@@ -41,7 +41,7 @@
           :default-expand-all="true"
           @node-click="onNodeClick"
         >
-          <template #default="{ _node, data }">
+          <template #default="{ data }">
             <span class="tree-node">
               <el-tag size="small" :type="typeTag(data.type)" style="margin-right: 4px">{{ typeLabel(data.type) }}</el-tag>
               <span>{{ data.name }}</span>
