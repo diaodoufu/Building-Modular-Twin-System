@@ -119,7 +119,7 @@ async function loadAvailability() {
   }
 }
 
-const startOptions = computed(() => {
+const startOptions = computed<{ value: string; label: string; disabled?: boolean }[]>(() => {
   if (!availability.value) return generateTimeOptions()
   return generateTimeOptions().map(opt => ({
     ...opt,
@@ -127,7 +127,7 @@ const startOptions = computed(() => {
   }))
 })
 
-const endOptions = computed(() => {
+const endOptions = computed<{ value: string; label: string; disabled?: boolean }[]>(() => {
   if (!availability.value) return generateTimeOptions()
   return generateTimeOptions().map(opt => ({
     ...opt,
