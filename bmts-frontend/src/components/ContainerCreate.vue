@@ -2,7 +2,7 @@
   <el-dialog :visible="visible" :title="dialogTitle" width="560px" :close-on-click-modal="false" @close="handleClose">
     <el-form label-width="90px">
       <el-form-item label="容器类型">
-        <el-select v-model="form.type" style="width:100%" @change="onTypeChange">
+        <el-select v-model="form.type" style="width:100%" @change="onTypeChange" :disabled="lockType">
           <el-option label="建筑" value="building" />
           <el-option label="楼层" value="floor" />
           <el-option label="房间" value="room" />
@@ -10,7 +10,7 @@
         </el-select>
       </el-form-item>
       <el-form-item label="父容器">
-        <el-select v-model="form.parentId" style="width:100%">
+        <el-select v-model="form.parentId" style="width:100%" :disabled="lockParentId">
           <el-option label="无（顶层）" :value="null" />
           <el-option
             v-for="container in parentOptions"
@@ -19,6 +19,7 @@
             :value="container.id"
           />
         </el-select>
+        <span v-if="lockParentId" class="lock-hint">已锁定为当前场景</span>
       </el-form-item>
       <el-form-item label="名称">
         <el-input v-model="form.name" :placeholder="namePlaceholder" />
@@ -69,6 +70,8 @@ const props = defineProps<{
   parentId?: string | null
   type?: 'building' | 'floor' | 'room' | 'resource'
   position?: { x: number; z: number }
+  lockParentId?: boolean
+  lockType?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -144,6 +147,9 @@ const dimMin = computed(() => {
 const dimStep = computed(() => {
   return form.value.type === 'room' ? 0.5 : 1
 })
+
+const lockParentId = computed(() => props.lockParentId || false)
+const lockType = computed(() => props.lockType || false)
 
 const parentOptions = computed(() => {
   const options: { id: string; name: string }[] = []
@@ -273,5 +279,11 @@ function handleClose() {
   color: #718096;
   font-size: 13px;
   min-width: 20px;
+}
+.lock-hint {
+  display: block;
+  color: #a0aec0;
+  font-size: 12px;
+  margin-top: 4px;
 }
 </style>

@@ -249,6 +249,8 @@
       :org-id="store.orgId"
       :type="'building'"
       :parent-id="campus?.id"
+      :lock-parent-id="true"
+      :lock-type="true"
       @close="showAddContainer = false"
       @created="onContainerCreated"
     />

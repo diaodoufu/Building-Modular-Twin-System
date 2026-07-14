@@ -34,6 +34,8 @@
       :type="'building'"
       :parent-id="campusData?.id"
       :position="containerCreatePosition"
+      :lock-parent-id="true"
+      :lock-type="true"
       @close="showContainerCreate = false"
       @created="onContainerCreated"
     />

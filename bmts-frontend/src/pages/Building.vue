@@ -92,6 +92,8 @@
       :type="containerCreateType"
       :parent-id="containerCreateParentId"
       :position="containerCreatePosition"
+      :lock-parent-id="true"
+      :lock-type="true"
       @close="showContainerCreate = false"
       @created="onContainerCreated"
     />
