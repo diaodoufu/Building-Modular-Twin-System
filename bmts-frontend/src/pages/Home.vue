@@ -163,7 +163,7 @@
     <div class="section-title" v-if="campus?.children?.length">
       建筑列表
       <div style="display:flex;gap:8px;margin-left:auto">
-        <el-button v-if="auth.isAdmin" type="success" size="small" @click="showAddBuilding = true">新建建筑</el-button>
+        <el-button v-if="auth.isAdmin" type="success" size="small" @click="showAddBuilding = true">新建容器</el-button>
         <el-button type="primary" size="small" @click="router.push('/campus')">3D全景</el-button>
       </div>
     </div>
@@ -193,7 +193,8 @@
         <div class="empty-icon">🏢</div>
         <h3>暂无建筑</h3>
         <p>该组织下还没有建筑数据</p>
-        <el-button type="primary" @click="showAddBuilding = true">新建建筑</el-button>
+        <el-button type="primary" @click="showAddBuilding = true">新建容器</el-button>
+        <span class="empty-hint">在自己的组织下建立自己的工作空间</span>
       </div>
     </div>
     <div v-else class="welcome">
@@ -202,7 +203,8 @@
         <h2>欢迎使用 BMTS</h2>
         <p>建筑模块化孪生系统</p>
         <div class="welcome-actions">
-          <el-button type="primary" size="large" @click="showJoinOrg = true">创建或加入组织</el-button>
+          <el-button type="primary" size="large" @click="showJoinOrg = true">加入组织</el-button>
+          <span class="welcome-hint">加入一个组织</span>
           <el-button size="large" @click="loadData" :loading="store.loading">查看已有数据</el-button>
         </div>
       </div>
@@ -241,8 +243,8 @@
       </template>
     </el-dialog>
 
-    <!-- 新建建筑对话框 -->
-    <el-dialog v-model="showAddBuilding" title="新建建筑" width="520px" :close-on-click-modal="false">
+    <!-- 新建容器对话框 -->
+    <el-dialog v-model="showAddBuilding" title="新建容器" width="520px" :close-on-click-modal="false">
       <el-form label-width="80px">
         <el-form-item label="名称">
           <el-input v-model="addForm.name" placeholder="如：教学楼B" />
@@ -303,33 +305,6 @@
               <el-input v-model="inviteForm.inviteCode" placeholder="邀请码" />
             </el-form-item>
             <el-button type="primary" @click="handleJoinByCode" :loading="joinLoading">加入</el-button>
-          </el-form>
-        </el-tab-pane>
-
-        <!-- 创建组织 -->
-        <el-tab-pane label="创建组织" name="create">
-          <el-form label-width="80px">
-            <el-form-item label="名称">
-              <el-input v-model="createOrgForm.name" placeholder="如：北京大学" />
-            </el-form-item>
-            <el-form-item label="Slug">
-              <el-input v-model="createOrgForm.slug" placeholder="如：pku（英文标识，唯一）" />
-            </el-form-item>
-            <el-form-item label="类型">
-              <el-select v-model="createOrgForm.org_type" style="width:100%">
-                <el-option label="校园" value="campus" />
-                <el-option label="医院" value="hospital" />
-                <el-option label="政府" value="government" />
-                <el-option label="企业" value="enterprise" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="描述">
-              <el-input v-model="createOrgForm.description" type="textarea" :rows="2" />
-            </el-form-item>
-            <el-form-item label="邀请码">
-              <el-input v-model="createOrgForm.invite_code" placeholder="可选，设置后加入需要邀请码" />
-            </el-form-item>
-            <el-button type="primary" @click="handleCreateOrg" :loading="createOrgLoading">创建</el-button>
           </el-form>
         </el-tab-pane>
 
@@ -626,14 +601,6 @@ const orgSearchKeyword = ref('')
 const orgSearchResults = ref<OrganizationRead[]>([])
 const joinLoading = ref(false)
 const inviteForm = ref({ orgId: '', inviteCode: '' })
-const createOrgLoading = ref(false)
-const createOrgForm = ref({
-  name: '',
-  slug: '',
-  org_type: 'campus',
-  description: '',
-  invite_code: '',
-})
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 function handleOrgSearch() {
@@ -680,32 +647,6 @@ async function handleJoinByCode() {
     ElMessage.error(e.response?.data?.detail || '加入失败')
   } finally {
     joinLoading.value = false
-  }
-}
-
-async function handleCreateOrg() {
-  if (!createOrgForm.value.name || !createOrgForm.value.slug) {
-    ElMessage.warning('请填写组织名称和Slug')
-    return
-  }
-  createOrgLoading.value = true
-  try {
-    await orgApi.create({
-      name: createOrgForm.value.name,
-      slug: createOrgForm.value.slug,
-      org_type: createOrgForm.value.org_type,
-      description: createOrgForm.value.description || undefined,
-      invite_code: createOrgForm.value.invite_code || undefined,
-    })
-    ElMessage.success('组织创建成功，你已成为owner')
-    createOrgForm.value = { name: '', slug: '', org_type: 'campus', description: '', invite_code: '' }
-    await auth.fetchMe()
-    await store.fetchTree()
-    orgTab.value = 'mine'
-  } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '创建失败')
-  } finally {
-    createOrgLoading.value = false
   }
 }
 
@@ -1038,6 +979,12 @@ h1 {
   font-size: 14px;
   margin-bottom: 24px;
 }
+.empty-hint {
+  display: block;
+  color: #a0aec0;
+  font-size: 12px;
+  margin-top: 12px;
+}
 .welcome {
   text-align: center;
   padding: 80px 40px;
@@ -1065,6 +1012,11 @@ h1 {
   display: flex;
   gap: 12px;
   justify-content: center;
+  align-items: center;
+}
+.welcome-hint {
+  color: #a0aec0;
+  font-size: 12px;
 }
 .attr-list {
   width: 100%;
