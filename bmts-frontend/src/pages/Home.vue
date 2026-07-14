@@ -163,13 +163,13 @@
     <div class="section-title" v-if="campus?.children?.length">
       建筑列表
       <div style="display:flex;gap:8px;margin-left:auto">
-        <el-button v-if="auth.isAdmin" type="success" size="small" @click="showAddBuilding = true">新建容器</el-button>
+        <el-button v-if="auth.isAdmin" type="success" size="small" @click="showAddContainer = true">新建容器</el-button>
         <el-button type="primary" size="small" @click="router.push('/campus')">3D全景</el-button>
       </div>
     </div>
     <div class="section-title" v-else-if="campus" style="display:flex;justify-content:space-between">
       <span>暂无建筑</span>
-      <el-button v-if="auth.isAdmin" type="success" size="small" @click="showAddBuilding = true">新建建筑</el-button>
+      <el-button v-if="auth.isAdmin" type="success" size="small" @click="showAddContainer = true">新建容器</el-button>
     </div>
     <div class="buildings" v-if="campus?.children?.length">
       <div
@@ -193,7 +193,7 @@
         <div class="empty-icon">🏢</div>
         <h3>暂无建筑</h3>
         <p>该组织下还没有建筑数据</p>
-        <el-button type="primary" @click="showAddBuilding = true">新建容器</el-button>
+        <el-button type="primary" @click="showAddContainer = true">新建容器</el-button>
         <span class="empty-hint">在自己的组织下建立自己的工作空间</span>
       </div>
     </div>
@@ -243,35 +243,15 @@
       </template>
     </el-dialog>
 
-    <!-- 新建容器对话框 -->
-    <el-dialog v-model="showAddBuilding" title="新建容器" width="520px" :close-on-click-modal="false">
-      <el-form label-width="80px">
-        <el-form-item label="名称">
-          <el-input v-model="addForm.name" placeholder="如：教学楼B" />
-        </el-form-item>
-        <el-divider content-position="left">固有属性</el-divider>
-        <div v-for="(attr, idx) in addForm.baseAttrs" :key="'b'+idx" class="kv-row">
-          <el-input v-model="attr.key" placeholder="属性名" size="small" style="width:140px" />
-          <el-input v-model="attr.value" placeholder="数值" size="small" style="width:140px" />
-          <el-button type="danger" text size="small" @click="addForm.baseAttrs.splice(idx, 1)">删除</el-button>
-        </div>
-        <el-button type="primary" text size="small" @click="addForm.baseAttrs.push({ key: '', value: '' })">+ 新增属性</el-button>
-        <el-divider content-position="left">3D位置与尺寸</el-divider>
-        <div class="kv-row">
-          <span class="pos-label">X</span><el-input-number v-model="addForm.position.x" size="small" :step="5" />
-          <span class="pos-label">Z</span><el-input-number v-model="addForm.position.z" size="small" :step="5" />
-        </div>
-        <div class="kv-row" style="margin-top:8px">
-          <span class="pos-label">宽</span><el-input-number v-model="addForm.dimensions.width" size="small" :min="5" :step="5" />
-          <span class="pos-label">高</span><el-input-number v-model="addForm.dimensions.height" size="small" :min="5" :step="3" />
-          <span class="pos-label">深</span><el-input-number v-model="addForm.dimensions.depth" size="small" :min="5" :step="5" />
-        </div>
-      </el-form>
-      <template #footer>
-        <el-button @click="showAddBuilding = false">取消</el-button>
-        <el-button type="primary" @click="handleAddBuilding" :loading="addLoading">创建</el-button>
-      </template>
-    </el-dialog>
+    <!-- 新建容器组件 -->
+    <ContainerCreate
+      :visible="showAddContainer"
+      :org-id="store.orgId"
+      :type="'building'"
+      :parent-id="campus?.id"
+      @close="showAddContainer = false"
+      @created="onContainerCreated"
+    />
 
     <!-- 组织管理对话框 -->
     <el-dialog v-model="showJoinOrg" title="组织管理" width="560px">
@@ -350,6 +330,7 @@ import { containerApi, type ContainerTreeNode } from '../api/containers'
 import { orgApi, type OrganizationRead } from '../api/organizations'
 import { reservationApi, type ReservationRead } from '../api/reservations'
 import { authApi } from '../api/auth'
+import ContainerCreate from '../components/ContainerCreate.vue'
 
 const router = useRouter()
 const store = useContainerStore()
@@ -471,52 +452,11 @@ function onSearchItemClick(item: SearchItem) {
   }
 }
 
-// 新建建筑
-const showAddBuilding = ref(false)
-const addLoading = ref(false)
-const addForm = ref({
-  name: '',
-  baseAttrs: [
-    { key: 'built_year', value: '2026' },
-    { key: 'total_floors', value: '5' },
-    { key: 'area_sqm', value: '' },
-  ] as AttrItem[],
-  position: { x: 0, z: 0 },
-  dimensions: { width: 25, height: 20, depth: 18 },
-})
+// 新建容器
+const showAddContainer = ref(false)
 
-async function handleAddBuilding() {
-  if (!addForm.value.name || !campus.value) return
-  addLoading.value = true
-  try {
-    const baseAttrs: Record<string, any> = {}
-    for (const attr of addForm.value.baseAttrs) {
-      if (attr.key) baseAttrs[attr.key] = parseValue(attr.value)
-    }
-    await containerApi.create({
-      org_id: store.orgId,
-      type: 'building',
-      name: addForm.value.name,
-      parent_id: campus.value.id,
-      base_attrs: baseAttrs,
-      position: { x: addForm.value.position.x, y: 0, z: addForm.value.position.z },
-      dimensions: { width: addForm.value.dimensions.width, height: addForm.value.dimensions.height, depth: addForm.value.dimensions.depth },
-    })
-    showAddBuilding.value = false
-    addForm.value.name = ''
-    await store.fetchTree()
-  } finally {
-    addLoading.value = false
-  }
-}
-
-function parseValue(v: string) {
-  if (v === '' || v === undefined) return ''
-  const n = Number(v)
-  if (!isNaN(n)) return n
-  if (v === 'true') return true
-  if (v === 'false') return false
-  return v
+async function onContainerCreated() {
+  await store.fetchTree()
 }
 
 function objToAttrs(obj: Record<string, any>): AttrItem[] {

@@ -21,7 +21,7 @@
         >
           {{ floor.name }}
         </el-button>
-        <el-button v-if="auth.isAdmin" type="success" size="small" @click="showAddFloor = true" style="margin: 2px">
+        <el-button v-if="auth.isAdmin" type="success" size="small" @click="openContainerCreate('floor', store.selectedBuilding?.id || null)" style="margin: 2px">
           +楼层
         </el-button>
       </div>
@@ -35,7 +35,7 @@
         @node-click="onNodeClick"
       />
       <div class="sidebar-footer">
-      <el-button v-if="auth.isAdmin && selectedFloorId" type="success" size="small" @click="showAddRoom = true">
+      <el-button v-if="auth.isAdmin && selectedFloorId" type="success" size="small" @click="openContainerCreate('room', selectedFloorId)">
         新建房间
       </el-button>
       <el-button
@@ -85,56 +85,16 @@
       <MyReservations ref="myReservationsRef" />
     </el-drawer>
 
-    <!-- 新建楼层对话框 -->
-    <el-dialog v-model="showAddFloor" title="新建楼层" width="460px" :close-on-click-modal="false">
-      <el-form label-width="80px">
-        <el-form-item label="楼层名称">
-          <el-input v-model="addFloorForm.name" placeholder="如：6F" />
-        </el-form-item>
-        <el-divider content-position="left">固有属性</el-divider>
-        <div v-for="(attr, idx) in addFloorForm.baseAttrs" :key="'f'+idx" class="kv-row">
-          <el-input v-model="attr.key" placeholder="属性名" size="small" style="width:130px" />
-          <el-input v-model="attr.value" placeholder="数值" size="small" style="width:130px" />
-          <el-button type="danger" text size="small" @click="addFloorForm.baseAttrs.splice(idx, 1)">删除</el-button>
-        </div>
-        <el-button type="primary" text size="small" @click="addFloorForm.baseAttrs.push({ key: '', value: '' })">+ 新增属性</el-button>
-      </el-form>
-      <template #footer>
-        <el-button @click="showAddFloor = false">取消</el-button>
-        <el-button type="primary" @click="handleAddFloor" :loading="addFloorLoading">创建</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 新建房间对话框 -->
-    <el-dialog v-model="showAddRoom" title="新建房间" width="520px" :close-on-click-modal="false">
-      <el-form label-width="80px">
-        <el-form-item label="房间名称">
-          <el-input v-model="addRoomForm.name" placeholder="如：601教室" />
-        </el-form-item>
-        <el-divider content-position="left">固有属性</el-divider>
-        <div v-for="(attr, idx) in addRoomForm.baseAttrs" :key="'rb'+idx" class="kv-row">
-          <el-input v-model="attr.key" placeholder="属性名" size="small" style="width:130px" />
-          <el-input v-model="attr.value" placeholder="数值" size="small" style="width:130px" />
-          <el-button type="danger" text size="small" @click="addRoomForm.baseAttrs.splice(idx, 1)">删除</el-button>
-        </div>
-        <el-button type="primary" text size="small" @click="addRoomForm.baseAttrs.push({ key: '', value: '' })">+ 新增属性</el-button>
-        <el-divider content-position="left">3D位置与尺寸</el-divider>
-        <div class="kv-row">
-          <span class="pos-label">X</span><el-input-number v-model="addRoomForm.position.x" size="small" :step="2" />
-          <span class="pos-label">Z</span><el-input-number v-model="addRoomForm.position.z" size="small" :step="2" />
-        </div>
-        <div class="kv-row" style="margin-top:8px">
-          <span class="pos-label">宽</span><el-input-number v-model="addRoomForm.dimensions.width" size="small" :min="3" :step="2" />
-          <span class="pos-label">高</span><el-input-number v-model="addRoomForm.dimensions.height" size="small" :min="2" :step="0.5" />
-          <span class="pos-label">深</span><el-input-number v-model="addRoomForm.dimensions.depth" size="small" :min="3" :step="2" />
-        </div>
-        <div style="margin-top:8px;color:#5a7a9a;font-size:12px">提示：也可在3D视图中点击地面选取位置</div>
-      </el-form>
-      <template #footer>
-        <el-button @click="showAddRoom = false">取消</el-button>
-        <el-button type="primary" @click="handleAddRoom" :loading="addRoomLoading">创建</el-button>
-      </template>
-    </el-dialog>
+    <!-- 新建容器组件 -->
+    <ContainerCreate
+      :visible="showContainerCreate"
+      :org-id="store.orgId"
+      :type="containerCreateType"
+      :parent-id="containerCreateParentId"
+      :position="containerCreatePosition"
+      @close="showContainerCreate = false"
+      @created="onContainerCreated"
+    />
   </div>
 </template>
 
@@ -149,6 +109,7 @@ import { useThreeScene } from '../composables/useThreeScene'
 import RoomInfoPanel from '../components/RoomInfoPanel.vue'
 import ReservationDialog from '../components/ReservationDialog.vue'
 import MyReservations from '../components/MyReservations.vue'
+import ContainerCreate from '../components/ContainerCreate.vue'
 
 const props = defineProps<{ id: string }>()
 const router = useRouter()
@@ -168,98 +129,28 @@ function toggleEditMode() {
   setEditMode(isEditMode.value)
 }
 
-// 新建楼层
-interface AttrItem { key: string; value: string }
-const showAddFloor = ref(false)
-const addFloorLoading = ref(false)
-const addFloorForm = ref({
-  name: '',
-  baseAttrs: [
-    { key: 'level', value: '' },
-    { key: 'height_m', value: '4' },
-    { key: 'area_sqm', value: '' },
-  ] as AttrItem[],
-})
+// 新建容器
+const showContainerCreate = ref(false)
+const containerCreateType = ref<'building' | 'floor' | 'room' | 'resource'>('floor')
+const containerCreateParentId = ref<string | null>(null)
+const containerCreatePosition = ref<{ x: number; z: number } | undefined>(undefined)
 
-// 新建房间
-const showAddRoom = ref(false)
-const addRoomLoading = ref(false)
-const addRoomForm = ref({
-  name: '',
-  baseAttrs: [
-    { key: 'room_number', value: '' },
-    { key: 'area_sqm', value: '' },
-    { key: 'capacity', value: '' },
-    { key: 'room_type', value: 'classroom' },
-  ] as AttrItem[],
-  position: { x: 0, z: 0 },
-  dimensions: { width: 8, height: 3.5, depth: 7 },
-})
-
-function parseValue(v: string) {
-  if (v === '' || v === undefined) return ''
-  const n = Number(v)
-  if (!isNaN(n)) return n
-  if (v === 'true') return true
-  if (v === 'false') return false
-  return v
+function openContainerCreate(type: 'building' | 'floor' | 'room' | 'resource', parentId: string | null, position?: { x: number; z: number }) {
+  containerCreateType.value = type
+  containerCreateParentId.value = parentId
+  containerCreatePosition.value = position
+  showContainerCreate.value = true
 }
 
-async function handleAddFloor() {
-  if (!addFloorForm.value.name || !store.selectedBuilding) return
-  addFloorLoading.value = true
-  try {
-    const baseAttrs: Record<string, any> = {}
-    for (const attr of addFloorForm.value.baseAttrs) {
-      if (attr.key) baseAttrs[attr.key] = parseValue(attr.value)
-    }
-    await containerApi.create({
-      org_id: store.orgId,
-      type: 'floor',
-      name: addFloorForm.value.name,
-      parent_id: store.selectedBuilding.id,
-      base_attrs: baseAttrs,
-    })
-    showAddFloor.value = false
-    addFloorForm.value.name = ''
-    await store.fetchTree()
-    // 重新选择当前建筑
-    const bld = store.tree[0]?.children?.find(b => b.id === store.selectedBuilding?.id)
-    if (bld) store.selectBuilding(bld)
-  } finally {
-    addFloorLoading.value = false
-  }
-}
-
-async function handleAddRoom() {
-  if (!addRoomForm.value.name || !selectedFloorId.value) return
-  addRoomLoading.value = true
-  try {
-    const baseAttrs: Record<string, any> = {}
-    for (const attr of addRoomForm.value.baseAttrs) {
-      if (attr.key) baseAttrs[attr.key] = parseValue(attr.value)
-    }
-    await containerApi.create({
-      org_id: store.orgId,
-      type: 'room',
-      name: addRoomForm.value.name,
-      parent_id: selectedFloorId.value,
-      base_attrs: baseAttrs,
-      position: { x: addRoomForm.value.position.x, y: 0, z: addRoomForm.value.position.z },
-      dimensions: { width: addRoomForm.value.dimensions.width, height: addRoomForm.value.dimensions.height, depth: addRoomForm.value.dimensions.depth },
-    })
-    showAddRoom.value = false
-    addRoomForm.value.name = ''
-    await store.fetchTree()
-    const bld = store.tree[0]?.children?.find(b => b.id === store.selectedBuilding?.id)
-    if (bld) store.selectBuilding(bld)
-    // 如果当前正在看这个楼层，重新加载房间
+async function onContainerCreated() {
+  await store.fetchTree()
+  const bld = store.tree[0]?.children?.find(b => b.id === store.selectedBuilding?.id)
+  if (bld) {
+    store.selectBuilding(bld)
     if (selectedFloorId.value) {
       const floor = bld?.children?.find(f => f.id === selectedFloorId.value)
       if (floor) await loadFloorRooms(floor)
     }
-  } finally {
-    addRoomLoading.value = false
   }
 }
 
@@ -268,9 +159,7 @@ const { init, dispose, buildFloorRooms, highlightRoom, onRoomClick, onGroundClic
 // 点击3D地面 → 打开新建房间并填入位置
 onGroundClick.value = (x: number, z: number) => {
   if (!auth.isAdmin || !selectedFloorId.value) return
-  addRoomForm.value.position.x = x
-  addRoomForm.value.position.z = z
-  showAddRoom.value = true
+  openContainerCreate('room', selectedFloorId.value, { x, z })
 }
 
 // 编辑模式下移动房间

@@ -3,7 +3,7 @@
     <div class="toolbar">
     <el-button type="info" text @click="router.push('/')">返回首页</el-button>
     <span class="toolbar-title">校园全景</span>
-    <el-button v-if="auth.isAdmin" type="success" size="small" @click="openAddBuildingDialog">新建建筑</el-button>
+    <el-button v-if="auth.isAdmin" type="success" size="small" @click="openContainerCreate">新建建筑</el-button>
     <el-button
       v-if="auth.isAdmin"
       :type="isEditMode ? 'warning' : 'primary'"
@@ -27,36 +27,16 @@
       <p class="click-hint">点击进入</p>
     </div>
 
-    <!-- 新建建筑对话框 -->
-    <el-dialog v-model="showAddBuilding" title="新建建筑" width="520px" :close-on-click-modal="false">
-      <el-form label-width="80px">
-        <el-form-item label="名称">
-          <el-input v-model="addForm.name" placeholder="如：教学楼B" />
-        </el-form-item>
-        <el-divider content-position="left">固有属性</el-divider>
-        <div v-for="(attr, idx) in addForm.baseAttrs" :key="'b'+idx" class="kv-row">
-          <el-input v-model="attr.key" placeholder="属性名" size="small" style="width:140px" />
-          <el-input v-model="attr.value" placeholder="数值" size="small" style="width:140px" />
-          <el-button type="danger" text size="small" @click="addForm.baseAttrs.splice(idx, 1)">删除</el-button>
-        </div>
-        <el-button type="primary" text size="small" @click="addForm.baseAttrs.push({ key: '', value: '' })">+ 新增属性</el-button>
-        <el-divider content-position="left">3D位置与尺寸</el-divider>
-        <div class="kv-row">
-          <span class="pos-label">X</span><el-input-number v-model="addForm.position.x" size="small" :step="5" />
-          <span class="pos-label">Z</span><el-input-number v-model="addForm.position.z" size="small" :step="5" />
-        </div>
-        <div class="kv-row" style="margin-top:8px">
-          <span class="pos-label">宽</span><el-input-number v-model="addForm.dimensions.width" size="small" :min="5" :step="5" />
-          <span class="pos-label">高</span><el-input-number v-model="addForm.dimensions.height" size="small" :min="5" :step="3" />
-          <span class="pos-label">深</span><el-input-number v-model="addForm.dimensions.depth" size="small" :min="5" :step="5" />
-        </div>
-        <div style="margin-top:8px;color:#5a7a9a;font-size:12px">提示：也可在3D视图中点击地面选取位置</div>
-      </el-form>
-      <template #footer>
-        <el-button @click="showAddBuilding = false">取消</el-button>
-        <el-button type="primary" @click="handleAddBuilding" :loading="addLoading">创建</el-button>
-      </template>
-    </el-dialog>
+    <!-- 新建容器组件 -->
+    <ContainerCreate
+      :visible="showContainerCreate"
+      :org-id="store.orgId"
+      :type="'building'"
+      :parent-id="campusData?.id"
+      :position="containerCreatePosition"
+      @close="showContainerCreate = false"
+      @created="onContainerCreated"
+    />
   </div>
 </template>
 
@@ -70,6 +50,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useContainerStore } from '../stores/container'
 import { useAuthStore } from '../stores/auth'
 import { containerApi, type ContainerTreeNode } from '../api/containers'
+import ContainerCreate from '../components/ContainerCreate.vue'
 
 const router = useRouter()
 const store = useContainerStore()
@@ -81,67 +62,30 @@ const hoverX = ref(0)
 const hoverY = ref(0)
 const isEditMode = ref(false)
 
-// 新建建筑
-interface AttrItem { key: string; value: string }
-const showAddBuilding = ref(false)
-const addLoading = ref(false)
-const addForm = ref({
-  name: '',
-  baseAttrs: [
-    { key: 'built_year', value: '2026' },
-    { key: 'total_floors', value: '5' },
-    { key: 'area_sqm', value: '' },
-  ] as AttrItem[],
-  position: { x: 0, z: 0 },
-  dimensions: { width: 25, height: 20, depth: 18 },
-})
+// 新建容器
+const showContainerCreate = ref(false)
+const containerCreatePosition = ref<{ x: number; z: number } | undefined>(undefined)
 
-function openAddBuildingDialog() {
-  const buildings = campusData?.children || []
-  const nextPos = computeNextPosition(buildings)
-  if (nextPos) {
-    addForm.value.position.x = nextPos.x
-    addForm.value.position.z = nextPos.z
+function openContainerCreate(position?: { x: number; z: number }) {
+  if (!position) {
+    const buildings = campusData?.children || []
+    const nextPos = computeNextPosition(buildings)
+    if (nextPos) {
+      containerCreatePosition.value = nextPos
+    } else {
+      containerCreatePosition.value = { x: 0, z: 0 }
+    }
+  } else {
+    containerCreatePosition.value = position
   }
-  showAddBuilding.value = true
+  showContainerCreate.value = true
 }
 
-function parseValue(v: string) {
-  if (v === '' || v === undefined) return ''
-  const n = Number(v)
-  if (!isNaN(n)) return n
-  if (v === 'true') return true
-  if (v === 'false') return false
-  return v
-}
-
-async function handleAddBuilding() {
-  if (!addForm.value.name || !campusData) return
-  addLoading.value = true
-  try {
-    const baseAttrs: Record<string, any> = {}
-    for (const attr of addForm.value.baseAttrs) {
-      if (attr.key) baseAttrs[attr.key] = parseValue(attr.value)
-    }
-    await containerApi.create({
-      org_id: store.orgId,
-      type: 'building',
-      name: addForm.value.name,
-      parent_id: campusData.id,
-      base_attrs: baseAttrs,
-      position: { x: addForm.value.position.x, y: 0, z: addForm.value.position.z },
-      dimensions: { width: addForm.value.dimensions.width, height: addForm.value.dimensions.height, depth: addForm.value.dimensions.depth },
-    })
-    showAddBuilding.value = false
-    addForm.value.name = ''
-    await store.fetchTree()
-    // 重新渲染3D
-    const updated = store.tree[0]
-    if (updated?.children?.length) {
-      buildCampus(updated.children)
-    }
-  } finally {
-    addLoading.value = false
+async function onContainerCreated() {
+  await store.fetchTree()
+  const updated = store.tree[0]
+  if (updated?.children?.length) {
+    buildCampus(updated.children)
   }
 }
 
@@ -362,9 +306,7 @@ function onClick(event: MouseEvent) {
 
     if (obj.userData?.isGround && hit.point) {
       if (auth.isAdmin) {
-        addForm.value.position.x = Math.round(hit.point.x)
-        addForm.value.position.z = Math.round(hit.point.z)
-        showAddBuilding.value = true
+        openContainerCreate({ x: Math.round(hit.point.x), z: Math.round(hit.point.z) })
       }
       return
     }
