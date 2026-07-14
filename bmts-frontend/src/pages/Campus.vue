@@ -414,42 +414,41 @@ function onMouseDown(event: MouseEvent) {
 }
 
 async function onMouseUp() {
-  if (draggingMesh) {
-    const buildingId = draggingMesh.userData?.buildingId
-    if (buildingId) {
-      const bld = buildingData.get(buildingId)
-      if (bld) {
-        const newX = Math.round(draggingMesh.position.x)
-        const newZ = Math.round(draggingMesh.position.z)
-        if (newX !== bld.position?.x || newZ !== bld.position?.z) {
-          try {
-            await ElMessageBox.confirm(
-              `确认保存建筑「${bld.name}」的位置变更？\n原位置: (${bld.position?.x || 0}, ${bld.position?.z || 0})\n新位置: (${newX}, ${newZ})`,
-              '保存位置',
-              { confirmButtonText: '保存', cancelButtonText: '取消', type: 'warning' }
-            )
-            await containerApi.update(buildingId, {
-              position: { x: newX, y: 0, z: newZ },
-            })
-            ElMessage.success('位置已保存')
-            await store.fetchTree()
-            const updated = store.tree[0]
-            if (updated?.children?.length) {
-              buildCampus(updated.children)
-            }
-          } catch {
-            draggingMesh.position.copy(dragOriginalPos)
-            draggingMesh = null
-            dragPlane = null
-            controls.enabled = true
-            return
+  if (!draggingMesh) return
+
+  const mesh = draggingMesh
+  const originalPos = dragOriginalPos.clone()
+  draggingMesh = null
+  dragPlane = null
+  controls.enabled = true
+
+  const buildingId = mesh.userData?.buildingId
+  if (buildingId) {
+    const bld = buildingData.get(buildingId)
+    if (bld) {
+      const newX = Math.round(mesh.position.x)
+      const newZ = Math.round(mesh.position.z)
+      if (newX !== bld.position?.x || newZ !== bld.position?.z) {
+        try {
+          await ElMessageBox.confirm(
+            `确认保存建筑「${bld.name}」的位置变更？\n原位置: (${bld.position?.x || 0}, ${bld.position?.z || 0})\n新位置: (${newX}, ${newZ})`,
+            '保存位置',
+            { confirmButtonText: '保存', cancelButtonText: '取消', type: 'warning' }
+          )
+          await containerApi.update(buildingId, {
+            position: { x: newX, y: 0, z: newZ },
+          })
+          ElMessage.success('位置已保存')
+          await store.fetchTree()
+          const updated = store.tree[0]
+          if (updated?.children?.length) {
+            buildCampus(updated.children)
           }
+        } catch {
+          mesh.position.copy(originalPos)
         }
       }
     }
-    draggingMesh = null
-    dragPlane = null
-    controls.enabled = true
   }
 }
 
