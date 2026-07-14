@@ -349,7 +349,6 @@ async function handleDialogSubmit() {
     } else {
       await containerApi.update(dialogForm.value.editing_id, {
         name: dialogForm.value.name,
-        parent_id: dialogForm.value.parent_id,
         sort_order: dialogForm.value.sort_order,
         base_attrs: baseAttrs,
         ext_attrs: extAttrs,
@@ -427,7 +426,7 @@ onMounted(fetchTree)
 <style scoped>
 .admin-page {
   height: 100vh;
-  background: #0a1628;
+  background: #fafbfc;
   display: flex;
   flex-direction: column;
 }
@@ -436,11 +435,13 @@ onMounted(fetchTree)
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  border-bottom: 1px solid #1e3a5f;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
 }
 .admin-header h2 {
-  color: #64b5f6;
+  color: #2d3748;
   margin: 0;
+  font-size: 18px;
 }
 .admin-body {
   flex: 1;
@@ -449,28 +450,30 @@ onMounted(fetchTree)
 }
 .tree-panel {
   width: 360px;
-  border-right: 1px solid #1e3a5f;
+  border-right: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  background: #ffffff;
 }
 .panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  color: #e0e6ed;
-  border-bottom: 1px solid #1e3a5f;
+  color: #2d3748;
+  border-bottom: 1px solid #e2e8f0;
 }
 .edit-panel {
   flex: 1;
   padding: 24px;
   overflow-y: auto;
-  color: #e0e6ed;
+  color: #2d3748;
 }
 .edit-panel h3 {
-  color: #64b5f6;
+  color: #2d3748;
   margin-bottom: 16px;
+  font-size: 16px;
 }
 .tree-node {
   display: flex;

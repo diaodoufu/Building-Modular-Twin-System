@@ -330,7 +330,7 @@ onUnmounted(() => {
 <style scoped>
 .stats-page {
   min-height: 100vh;
-  background: #0a1628;
+  background: #fafbfc;
   padding: 40px;
 }
 .header {
@@ -341,53 +341,55 @@ onUnmounted(() => {
   margin: 0 auto 24px;
 }
 h1 {
-  font-size: 28px;
-  color: #e0e6ed;
+  font-size: 24px;
+  color: #2d3748;
+  font-weight: 600;
 }
 h3 {
-  color: #8ab4f8;
-  font-size: 16px;
+  color: #2d3748;
+  font-size: 15px;
   margin: 0;
+  font-weight: 500;
 }
 .overview {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   max-width: 1200px;
   margin: 0 auto 24px;
 }
 .stat-card {
   flex: 1;
-  background: #0f2744;
-  border: 1px solid #1e3a5f;
-  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   padding: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
-.stat-card.main .stat-value { color: #64b5f6; }
-.stat-card.reserved .stat-value { color: #e6a23c; }
-.stat-card.rate .stat-value { color: #67c23a; }
+.stat-card.main .stat-value { color: #4a90d9; }
+.stat-card.reserved .stat-value { color: #d97706; }
+.stat-card.rate .stat-value { color: #16a34a; }
 .stat-value {
-  font-size: 36px;
-  font-weight: bold;
+  font-size: 32px;
+  font-weight: 600;
 }
 .stat-label {
-  color: #5a7a9a;
+  color: #718096;
   font-size: 14px;
   margin-top: 4px;
 }
 .charts-row {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   max-width: 1200px;
   margin: 0 auto 24px;
 }
 .chart-card {
   flex: 1;
-  background: #0f2744;
-  border: 1px solid #1e3a5f;
-  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   padding: 20px;
 }
 .chart-card.wide {
@@ -409,7 +411,7 @@ h3 {
   gap: 8px;
 }
 .progress-text {
-  color: #e0e6ed;
+  color: #2d3748;
   font-size: 13px;
   min-width: 40px;
 }
@@ -425,8 +427,8 @@ h3 {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid #1e3a5f;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 .recommend-item:last-child {
   border-bottom: none;
@@ -435,13 +437,13 @@ h3 {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #42a5f5;
-  color: #fff;
+  background: #e8f0fe;
+  color: #4a90d9;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 600;
   flex-shrink: 0;
 }
 .recommend-info {
@@ -451,17 +453,17 @@ h3 {
   gap: 2px;
 }
 .recommend-name {
-  color: #e0e6ed;
+  color: #2d3748;
   font-size: 15px;
   font-weight: 500;
 }
 .recommend-meta {
-  color: #5a7a9a;
+  color: #718096;
   font-size: 12px;
 }
 .empty-hint {
-  color: #5a7a9a;
+  color: #a0aec0;
   text-align: center;
-  padding: 20px;
+  padding: 24px;
 }
 </style>

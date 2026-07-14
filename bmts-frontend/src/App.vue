@@ -22,8 +22,26 @@ onMounted(() => {
 }
 
 body {
-  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
-  background: #0a1628;
-  color: #e0e6ed;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: #fafbfc;
+  color: #2d3748;
+  line-height: 1.6;
+}
+
+:root {
+  --primary-color: #4a90d9;
+  --primary-light: #e8f0fe;
+  --primary-dark: #357abd;
+  --success-color: #52c41a;
+  --warning-color: #faad14;
+  --danger-color: #ff4d4f;
+  --text-primary: #2d3748;
+  --text-secondary: #718096;
+  --text-muted: #a0aec0;
+  --border-color: #e2e8f0;
+  --bg-card: #ffffff;
+  --bg-hover: #f7fafc;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 </style>

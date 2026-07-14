@@ -84,35 +84,37 @@ async function handleSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0a1628;
+  background: #fafbfc;
 }
 .login-card {
   width: 380px;
-  padding: 40px;
-  background: #0f2744;
+  padding: 48px 40px;
+  background: #ffffff;
   border-radius: 12px;
-  border: 1px solid #1e3a5f;
+  border: 1px solid #e2e8f0;
 }
 @media (max-width: 480px) {
-  .login-card { width: 100%; padding: 24px; border-radius: 0; border: none; }
+  .login-card { width: 100%; padding: 32px 24px; border-radius: 0; border: none; }
 }
 .title {
-  color: #64b5f6;
+  color: #2d3748;
   text-align: center;
-  font-size: 28px;
-  margin-bottom: 4px;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: -0.3px;
 }
 .subtitle {
-  color: #5a7a9a;
+  color: #718096;
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   font-size: 14px;
 }
 .tabs {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .error {
-  color: #ef5350;
+  color: #dc2626;
   text-align: center;
   margin-top: 12px;
   font-size: 13px;

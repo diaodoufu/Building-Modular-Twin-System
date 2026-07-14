@@ -46,9 +46,17 @@
         <el-button type="success" text size="small" @click="router.push('/stats')">
           数据统计
         </el-button>
-        <el-button v-if="auth.isLoggedIn" type="danger" text size="small" @click="auth.logout(); router.push('/login')">
-          退出
-        </el-button>
+        <el-dropdown v-if="auth.isLoggedIn" @command="handleUserAction">
+          <span class="user-menu">
+            <el-icon><arrow-down /></el-icon>
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+              <el-dropdown-item command="delete-account" divided>注销账户</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <el-button v-else type="primary" text size="small" @click="router.push('/login')">
           登录
         </el-button>
@@ -181,10 +189,23 @@
       </div>
     </div>
     <div v-else-if="campus" class="empty">
-      <el-empty description="暂无建筑数据，请前往数据管理添加" />
+      <div class="empty-content">
+        <div class="empty-icon">🏢</div>
+        <h3>暂无建筑</h3>
+        <p>该组织下还没有建筑数据</p>
+        <el-button type="primary" @click="showAddBuilding = true">新建建筑</el-button>
+      </div>
     </div>
-    <div v-else class="loading">
-      <el-button type="primary" @click="loadData" :loading="store.loading">加载数据</el-button>
+    <div v-else class="welcome">
+      <div class="welcome-content">
+        <div class="welcome-icon">👋</div>
+        <h2>欢迎使用 BMTS</h2>
+        <p>建筑模块化孪生系统</p>
+        <div class="welcome-actions">
+          <el-button type="primary" size="large" @click="showJoinOrg = true">创建或加入组织</el-button>
+          <el-button size="large" @click="loadData" :loading="store.loading">查看已有数据</el-button>
+        </div>
+      </div>
     </div>
 
     <!-- 编辑对话框 -->
@@ -346,13 +367,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useContainerStore } from '../stores/container'
 import { useAuthStore } from '../stores/auth'
 import { containerApi, type ContainerTreeNode } from '../api/containers'
 import { orgApi, type OrganizationRead } from '../api/organizations'
 import { reservationApi, type ReservationRead } from '../api/reservations'
+import { authApi } from '../api/auth'
 
 const router = useRouter()
 const store = useContainerStore()
@@ -702,12 +724,39 @@ async function onOrgSwitch(orgId: string) {
   await store.fetchTree()
 }
 
-onMounted(() => {
-  if (auth.token && !auth.user) {
-    auth.fetchMe()
+async function handleUserAction(command: string) {
+  if (command === 'logout') {
+    auth.logout()
+    router.push('/login')
+  } else if (command === 'delete-account') {
+    const confirm = await ElMessageBox.confirm(
+      '确定要注销账户吗？此操作不可撤销，所有数据将被删除。',
+      '确认注销',
+      {
+        type: 'warning',
+        confirmButtonText: '确定注销',
+        cancelButtonText: '取消',
+      }
+    )
+    if (confirm) {
+      try {
+        await authApi.deleteAccount()
+        auth.logout()
+        ElMessage.success('账户已注销')
+        router.push('/login')
+      } catch (e: any) {
+        ElMessage.error(e.response?.data?.detail || '注销失败')
+      }
+    }
   }
-  if (store.tree.length === 0) {
-    loadData()
+}
+
+onMounted(async () => {
+  if (auth.token && !auth.user) {
+    await auth.fetchMe()
+  }
+  if (auth.isLoggedIn && auth.organizations.length > 0 && store.tree.length === 0) {
+    await loadData()
   }
   fetchMyReservations()
 })
@@ -716,11 +765,11 @@ onMounted(() => {
 <style scoped>
 .home {
   min-height: 100vh;
-  background: #0a1628;
+  background: #fafbfc;
   padding: 40px;
 }
 @media (max-width: 768px) {
-  .home { padding: 16px; }
+  .home { padding: 20px 16px; }
   h1 { font-size: 24px !important; }
   .personal-grid { grid-template-columns: 1fr; }
   .stat-cards { flex-direction: row; }
@@ -732,63 +781,67 @@ onMounted(() => {
 }
 .header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 h1 {
-  font-size: 36px;
-  background: linear-gradient(135deg, #64b5f6, #42a5f5);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 32px;
+  font-weight: 600;
+  color: #2d3748;
   margin-bottom: 8px;
+  letter-spacing: -0.5px;
 }
 .subtitle {
-  color: #5a7a9a;
-  font-size: 16px;
+  color: #718096;
+  font-size: 15px;
 }
 .user-bar {
-  margin-top: 8px;
+  margin-top: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
 }
 .user-name {
-  color: #64b5f6;
+  color: #4a90d9;
   font-size: 14px;
 }
 .role-tag {
-  background: #e6a23c;
-  color: #fff;
+  background: #fef3c7;
+  color: #d97706;
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
+  font-weight: 500;
 }
 .role-tag.member {
-  background: #67c23a;
+  background: #dcfce7;
+  color: #16a34a;
 }
 .role-tag.guest {
-  background: #909399;
+  background: #f3f4f6;
+  color: #6b7280;
 }
 .campus-section {
   max-width: 1000px;
-  margin: 0 auto 24px;
+  margin: 0 auto 28px;
 }
 .campus-card {
-  background: #0f2744;
-  border: 1px solid #1e3a5f;
-  border-radius: 12px;
-  padding: 20px 24px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 24px;
 }
 .campus-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 .campus-header h2 {
-  color: #64b5f6;
+  color: #2d3748;
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
+  font-weight: 600;
 }
 .campus-attrs {
   display: flex;
@@ -797,7 +850,7 @@ h1 {
 }
 .personal-section {
   max-width: 1000px;
-  margin: 0 auto 24px;
+  margin: 0 auto 28px;
 }
 .personal-grid {
   display: grid;
@@ -807,100 +860,103 @@ h1 {
 .stat-cards {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-.stat-card {
-  background: #0f2744;
-  border: 1px solid #1e3a5f;
-  border-radius: 8px;
-  padding: 14px 18px;
-  cursor: pointer;
-  transition: border-color 0.2s;
-  display: flex;
-  align-items: baseline;
   gap: 8px;
 }
+.stat-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
 .stat-card:hover {
-  border-color: #42a5f5;
+  background: #f7fafc;
 }
 .stat-number {
-  color: #64b5f6;
+  color: #4a90d9;
   font-size: 28px;
   font-weight: 600;
+  line-height: 1;
 }
 .stat-label {
-  color: #5a7a9a;
+  color: #718096;
   font-size: 13px;
 }
 .recent-reservations {
-  background: #0f2744;
-  border: 1px solid #1e3a5f;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 16px;
+  padding: 20px;
 }
 .recent-reservations h4 {
-  color: #64b5f6;
-  margin: 0 0 10px 0;
+  color: #2d3748;
+  margin: 0 0 12px 0;
   font-size: 14px;
+  font-weight: 500;
 }
 .reservation-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 0;
-  border-bottom: 1px solid #1e3a5f;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.15s;
 }
 .reservation-item:last-child {
   border-bottom: none;
 }
 .reservation-item:hover {
-  background: rgba(66, 165, 245, 0.05);
+  background: #f7fafc;
 }
 .res-status {
   font-size: 11px;
-  padding: 1px 6px;
-  border-radius: 3px;
+  padding: 2px 8px;
+  border-radius: 4px;
   flex-shrink: 0;
+  font-weight: 500;
 }
-.res-status.pending { background: #e6a23c; color: #fff; }
-.res-status.approved { background: #67c23a; color: #fff; }
-.res-status.rejected { background: #f56c6c; color: #fff; }
-.res-status.cancelled { background: #909399; color: #fff; }
+.res-status.pending { background: #fef3c7; color: #d97706; }
+.res-status.approved { background: #dcfce7; color: #16a34a; }
+.res-status.rejected { background: #fee2e2; color: #dc2626; }
+.res-status.cancelled { background: #f3f4f6; color: #6b7280; }
 .res-room {
-  color: #e0e6ed;
-  font-size: 13px;
+  color: #2d3748;
+  font-size: 14px;
   flex: 1;
 }
 .res-time {
-  color: #5a7a9a;
+  color: #a0aec0;
   font-size: 12px;
   flex-shrink: 0;
 }
 .reservation-drawer-item {
-  padding: 10px 0;
-  border-bottom: 1px solid #1e3a5f;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
 }
 .reservation-drawer-item:hover {
-  background: rgba(66, 165, 245, 0.05);
+  background: #f7fafc;
 }
 .reservation-drawer-item .res-main {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 4px;
 }
 .reservation-drawer-item .res-detail {
-  color: #5a7a9a;
+  color: #a0aec0;
   font-size: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .res-title {
-  color: #8ab4f8;
+  color: #4a90d9;
 }
 .attr-item {
   display: flex;
@@ -908,15 +964,15 @@ h1 {
   align-items: baseline;
 }
 .attr-label {
-  color: #5a7a9a;
+  color: #a0aec0;
   font-size: 13px;
 }
 .attr-value {
-  color: #e0e6ed;
+  color: #2d3748;
   font-size: 14px;
 }
 .section-title {
-  color: #5a7a9a;
+  color: #718096;
   font-size: 14px;
   max-width: 1000px;
   margin: 0 auto 12px;
@@ -924,37 +980,37 @@ h1 {
 .buildings {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+  gap: 16px;
   max-width: 1000px;
   margin: 0 auto;
 }
 .building-card {
-  background: #0f2744;
-  border: 1px solid #1e3a5f;
-  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   padding: 24px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.15s;
   display: flex;
   gap: 16px;
   align-items: center;
   position: relative;
 }
 .building-card:hover {
-  border-color: #42a5f5;
-  background: #132e52;
-  transform: translateY(-2px);
+  background: #f7fafc;
 }
 .building-icon {
-  font-size: 40px;
+  font-size: 36px;
 }
 .building-info h3 {
-  color: #e0e6ed;
+  color: #2d3748;
   margin-bottom: 4px;
+  font-size: 16px;
 }
 .building-info p {
-  color: #5a7a9a;
-  font-size: 14px;
+  color: #718096;
+  font-size: 13px;
+  margin: 2px 0;
 }
 .edit-btn {
   position: absolute;
@@ -963,11 +1019,52 @@ h1 {
 }
 .empty {
   text-align: center;
-  margin-top: 60px;
+  margin-top: 80px;
 }
-.loading {
+.empty-content {
+  padding: 40px;
+}
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+.empty-content h3 {
+  color: #2d3748;
+  font-size: 20px;
+  margin-bottom: 8px;
+}
+.empty-content p {
+  color: #718096;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+.welcome {
   text-align: center;
-  margin-top: 60px;
+  padding: 80px 40px;
+}
+.welcome-content {
+  max-width: 500px;
+  margin: 0 auto;
+}
+.welcome-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+.welcome-content h2 {
+  color: #2d3748;
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.welcome-content p {
+  color: #718096;
+  font-size: 16px;
+  margin-bottom: 32px;
+}
+.welcome-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
 }
 .attr-list {
   width: 100%;
@@ -984,9 +1081,9 @@ h1 {
 }
 .search-results {
   max-width: 1200px;
-  margin: 0 auto 16px;
-  background: #0f2744;
-  border: 1px solid #1e3a5f;
+  margin: 0 auto 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -994,37 +1091,37 @@ h1 {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 16px;
+  padding: 12px 16px;
   cursor: pointer;
-  border-bottom: 1px solid #1e3a5f;
-  transition: background 0.2s;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s;
 }
 .search-item:last-child {
   border-bottom: none;
 }
 .search-item:hover {
-  background: #163050;
+  background: #f7fafc;
 }
 .search-type {
-  background: #42a5f5;
-  color: #fff;
+  background: #e8f0fe;
+  color: #4a90d9;
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 12px;
   flex-shrink: 0;
 }
 .search-name {
-  color: #e0e6ed;
+  color: #2d3748;
   font-size: 14px;
 }
 .search-path {
-  color: #5a7a9a;
+  color: #a0aec0;
   font-size: 12px;
   margin-left: auto;
 }
 .no-result {
-  color: #5a7a9a;
-  padding: 20px;
+  color: #a0aec0;
+  padding: 24px;
   text-align: center;
 }
 .kv-row {
@@ -1034,31 +1131,31 @@ h1 {
   margin-bottom: 6px;
 }
 .pos-label {
-  color: #5a7a9a;
+  color: #a0aec0;
   font-size: 13px;
   min-width: 20px;
 }
 .org-bar {
-  margin-top: 8px;
+  margin-top: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
 }
 .org-switch {
-  color: #64b5f6;
-  font-size: 15px;
+  color: #4a90d9;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 4px;
 }
 .org-switch:hover {
-  color: #42a5f5;
+  color: #357abd;
 }
 .org-type-tag {
-  background: #1e3a5f;
-  color: #8ab4f8;
+  background: #f1f5f9;
+  color: #64748b;
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 3px;
@@ -1069,25 +1166,26 @@ h1 {
   padding: 1px 5px;
   border-radius: 3px;
   margin-left: 4px;
+  font-weight: 500;
 }
 .role-badge.owner {
-  background: #e6a23c;
-  color: #fff;
+  background: #fef3c7;
+  color: #d97706;
 }
 .role-badge.admin {
-  background: #409eff;
-  color: #fff;
+  background: #e8f0fe;
+  color: #4a90d9;
 }
 .role-badge.member {
-  background: #67c23a;
-  color: #fff;
+  background: #dcfce7;
+  color: #16a34a;
 }
 .org-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border-bottom: 1px solid #1e3a5f;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
 }
 .org-item:last-child {
   border-bottom: none;
@@ -1095,28 +1193,37 @@ h1 {
 .org-info {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 .org-name {
-  color: #e0e6ed;
+  color: #2d3748;
   font-size: 14px;
 }
 .org-slug {
-  color: #5a7a9a;
+  color: #a0aec0;
   font-size: 12px;
   margin-left: 6px;
 }
 .org-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 .joined-tag {
-  color: #67c23a;
+  color: #16a34a;
   font-size: 12px;
 }
 .current-tag {
-  color: #409eff;
+  color: #4a90d9;
   font-size: 12px;
+}
+.user-menu {
+  cursor: pointer;
+  color: #718096;
+  font-size: 16px;
+  padding: 4px;
+}
+.user-menu:hover {
+  color: #4a90d9;
 }
 </style>

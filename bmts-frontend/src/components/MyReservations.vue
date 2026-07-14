@@ -83,7 +83,9 @@ defineExpose({ fetchMyReservations })
 
 <style scoped>
 .my-reservations h3 {
-  color: #64b5f6;
+  color: #2d3748;
   margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 500;
 }
 </style>

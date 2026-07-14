@@ -35,19 +35,27 @@
         @node-click="onNodeClick"
       />
       <div class="sidebar-footer">
-        <el-button v-if="auth.isAdmin && selectedFloorId" type="success" size="small" @click="showAddRoom = true">
-          新建房间
-        </el-button>
-        <el-button v-if="auth.isMember" type="primary" size="small" @click="showMyReservations = true">
-          我的预约
-        </el-button>
-        <el-button v-if="auth.isAdmin" type="warning" size="small" @click="router.push('/review')">
-          审核管理
-        </el-button>
-        <el-button type="info" size="small" @click="router.push('/')">
-          返回首页
-        </el-button>
-      </div>
+      <el-button v-if="auth.isAdmin && selectedFloorId" type="success" size="small" @click="showAddRoom = true">
+        新建房间
+      </el-button>
+      <el-button
+        v-if="auth.isAdmin && selectedFloorId"
+        :type="isEditMode ? 'warning' : 'primary'"
+        size="small"
+        @click="toggleEditMode"
+      >
+        {{ isEditMode ? '退出编辑' : '编辑位置' }}
+      </el-button>
+      <el-button v-if="auth.isMember" type="primary" size="small" @click="showMyReservations = true">
+        我的预约
+      </el-button>
+      <el-button v-if="auth.isAdmin" type="warning" size="small" @click="router.push('/review')">
+        审核管理
+      </el-button>
+      <el-button type="info" size="small" @click="router.push('/')">
+        返回首页
+      </el-button>
+    </div>
     </div>
     <div class="main" ref="canvasContainer">
       <RoomInfoPanel
@@ -153,6 +161,12 @@ const showReserveDialog = ref(false)
 const showMyReservations = ref(false)
 const myReservationsRef = ref()
 const treeRef = ref()
+const isEditMode = ref(false)
+
+function toggleEditMode() {
+  isEditMode.value = !isEditMode.value
+  setEditMode(isEditMode.value)
+}
 
 // 新建楼层
 interface AttrItem { key: string; value: string }
@@ -249,7 +263,7 @@ async function handleAddRoom() {
   }
 }
 
-const { init, dispose, buildFloorRooms, highlightRoom, onRoomClick, onGroundClick } = useThreeScene(canvasContainer)
+const { init, dispose, buildFloorRooms, highlightRoom, onRoomClick, onGroundClick, onRoomMove, setEditMode } = useThreeScene(canvasContainer)
 
 // 点击3D地面 → 打开新建房间并填入位置
 onGroundClick.value = (x: number, z: number) => {
@@ -257,6 +271,14 @@ onGroundClick.value = (x: number, z: number) => {
   addRoomForm.value.position.x = x
   addRoomForm.value.position.z = z
   showAddRoom.value = true
+}
+
+// 编辑模式下移动房间
+onRoomMove.value = (roomId: string, x: number, z: number) => {
+  if (!auth.isAdmin) return
+  containerApi.update(roomId, {
+    position: { x, y: 0, z },
+  }).catch(e => console.warn('更新房间位置失败', e))
 }
 
 const buildingName = computed(() => store.selectedBuilding?.name || '建筑')
@@ -395,12 +417,12 @@ watch(() => store.orgId, async (newOrgId, oldOrgId) => {
 .building-page {
   display: flex;
   height: 100vh;
-  background: #0a1628;
+  background: #fafbfc;
   position: relative;
 }
 @media (max-width: 768px) {
   .building-page { flex-direction: column; }
-  .sidebar { width: 100%; max-height: 35vh; border-right: none; border-bottom: 1px solid #1e3a5f; }
+  .sidebar { width: 100%; max-height: 35vh; border-right: none; border-bottom: 1px solid #e2e8f0; }
   .main { min-height: 50vh; }
 }
 .breadcrumb-bar {
@@ -409,23 +431,25 @@ watch(() => store.orgId, async (newOrgId, oldOrgId) => {
   left: 50%;
   transform: translateX(-50%);
   z-index: 10;
-  background: rgba(10, 22, 40, 0.85);
-  border: 1px solid #1e3a5f;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 6px 16px;
 }
 .sidebar {
   width: 260px;
   padding: 16px;
-  border-right: 1px solid #1e3a5f;
+  border-right: 1px solid #e2e8f0;
   overflow-y: auto;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  background: #ffffff;
 }
 .sidebar h3 {
-  color: #64b5f6;
+  color: #2d3748;
   margin-bottom: 12px;
+  font-size: 16px;
 }
 .floor-selector {
   margin-bottom: 12px;
@@ -435,7 +459,7 @@ watch(() => store.orgId, async (newOrgId, oldOrgId) => {
 .sidebar-footer {
   margin-top: auto;
   padding-top: 12px;
-  border-top: 1px solid #1e3a5f;
+  border-top: 1px solid #e2e8f0;
 }
 .main {
   flex: 1;
@@ -443,7 +467,7 @@ watch(() => store.orgId, async (newOrgId, oldOrgId) => {
   overflow: hidden;
 }
 .login-hint {
-  color: #5a7a9a;
+  color: #718096;
   font-size: 13px;
 }
 .kv-row {
@@ -453,7 +477,7 @@ watch(() => store.orgId, async (newOrgId, oldOrgId) => {
   margin-bottom: 6px;
 }
 .pos-label {
-  color: #5a7a9a;
+  color: #718096;
   font-size: 13px;
   min-width: 20px;
 }

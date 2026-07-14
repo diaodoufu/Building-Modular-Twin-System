@@ -118,46 +118,46 @@ function copyExample() {
 
 <style scoped>
 .schema-page {
-  height: 100vh;
-  background: #0a1628;
+  min-height: 100vh;
+  background: #fafbfc;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
 }
 .schema-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  border-bottom: 1px solid #1e3a5f;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
 }
-.schema-header h2 { color: #64b5f6; margin: 0; }
+.schema-header h2 { color: #2d3748; margin: 0; font-size: 18px; }
 .schema-body {
-  padding: 24px;
+  padding: 32px 24px;
   max-width: 900px;
   margin: 0 auto;
   width: 100%;
 }
 .info-card {
-  margin-bottom: 16px;
-  background: #0f2744;
-  border: 1px solid #1e3a5f;
+  margin-bottom: 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
 }
-.info-card h3 { color: #64b5f6; margin-bottom: 12px; }
-.info-card p { color: #b0bec5; line-height: 1.6; }
+.info-card h3 { color: #2d3748; margin-bottom: 12px; font-size: 15px; font-weight: 500; }
+.info-card p { color: #4a5568; line-height: 1.6; }
 .hierarchy-item {
   padding: 8px 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #e0e6ed;
+  color: #2d3748;
 }
-.hierarchy-desc { font-size: 13px; color: #90a4ae; }
+.hierarchy-desc { font-size: 13px; color: #718096; }
 .code-block {
-  background: #0a1628;
+  background: #2d3748;
   padding: 16px;
   border-radius: 8px;
   overflow-x: auto;
 }
-.code-block pre { color: #b0bec5; margin: 0; font-size: 13px; }
+.code-block pre { color: #e2e8f0; margin: 0; font-size: 13px; }
 </style>

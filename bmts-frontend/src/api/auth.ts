@@ -27,4 +27,7 @@ export const authApi = {
   refresh(refreshToken: string) {
     return api.post<TokenResponse>('/auth/refresh', { refresh_token: refreshToken })
   },
+  deleteAccount() {
+    return api.delete('/auth/delete-account')
+  },
 }

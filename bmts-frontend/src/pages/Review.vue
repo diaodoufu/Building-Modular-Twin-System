@@ -119,7 +119,7 @@ onMounted(fetchPending)
 <style scoped>
 .review-page {
   min-height: 100vh;
-  background: #0a1628;
+  background: #fafbfc;
   padding: 40px;
 }
 .header {
@@ -132,8 +132,9 @@ onMounted(fetchPending)
   margin-right: auto;
 }
 h1 {
-  font-size: 28px;
-  color: #e0e6ed;
+  font-size: 24px;
+  color: #2d3748;
+  font-weight: 600;
 }
 .stats {
   display: flex;
@@ -142,9 +143,9 @@ h1 {
   margin: 0 auto 24px;
 }
 .stat-card {
-  background: #0f2744;
-  border: 1px solid #1e3a5f;
-  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
   padding: 16px 24px;
   display: flex;
   flex-direction: column;
@@ -152,12 +153,12 @@ h1 {
 }
 .stat-num {
   font-size: 32px;
-  color: #e6a23c;
-  font-weight: bold;
+  color: #d97706;
+  font-weight: 600;
 }
 .stat-label {
   font-size: 13px;
-  color: #5a7a9a;
+  color: #718096;
 }
 .review-list {
   max-width: 900px;
@@ -167,16 +168,16 @@ h1 {
   gap: 12px;
 }
 .review-card {
-  background: #0f2744;
-  border: 1px solid #1e3a5f;
-  border-radius: 12px;
-  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .review-title {
-  color: #e0e6ed;
+  color: #2d3748;
   font-size: 16px;
   font-weight: 500;
   margin-bottom: 6px;
@@ -187,11 +188,11 @@ h1 {
   flex-wrap: wrap;
 }
 .meta-item {
-  color: #5a7a9a;
+  color: #718096;
   font-size: 13px;
 }
 .status-pending {
-  color: #e6a23c;
+  color: #d97706;
 }
 .review-actions {
   display: flex;
@@ -200,6 +201,6 @@ h1 {
 }
 .empty {
   text-align: center;
-  margin-top: 60px;
+  margin-top: 80px;
 }
 </style>

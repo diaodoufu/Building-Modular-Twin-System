@@ -192,3 +192,34 @@ async def get_my_role(
         "current_org_id": str(first.org_id),
         "current_role": first.role,
     }
+
+
+@router.delete("/delete-account")
+async def delete_account(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """删除当前用户账户及相关数据"""
+    from app.models.models import Organization, OrganizationMember, Container, Reservation
+    
+    await db.execute(
+        delete(Reservation).where(Reservation.user_id == current_user.id)
+    )
+    
+    org_result = await db.execute(
+        select(Organization).join(OrganizationMember).where(
+            OrganizationMember.user_id == current_user.id,
+            OrganizationMember.role == 'owner'
+        )
+    )
+    orgs = org_result.scalars().all()
+    for org in orgs:
+        await db.delete(org)
+    
+    await db.execute(
+        delete(OrganizationMember).where(OrganizationMember.user_id == current_user.id)
+    )
+    
+    await db.delete(current_user)
+    await db.commit()
+    return {"message": "账户已删除"}

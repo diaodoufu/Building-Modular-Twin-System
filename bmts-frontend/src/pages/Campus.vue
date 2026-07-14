@@ -1,10 +1,22 @@
 <template>
   <div class="campus-page">
     <div class="toolbar">
-      <el-button type="info" text @click="router.push('/')">返回首页</el-button>
-      <span class="toolbar-title">校园全景</span>
-      <el-button v-if="auth.isAdmin" type="success" size="small" @click="openAddBuildingDialog">新建建筑</el-button>
-    </div>
+    <el-button type="info" text @click="router.push('/')">返回首页</el-button>
+    <span class="toolbar-title">校园全景</span>
+    <el-button v-if="auth.isAdmin" type="success" size="small" @click="openAddBuildingDialog">新建建筑</el-button>
+    <el-button
+      v-if="auth.isAdmin"
+      :type="isEditMode ? 'warning' : 'primary'"
+      size="small"
+      @click="toggleEditMode"
+    >
+      {{ isEditMode ? '退出编辑' : '编辑位置' }}
+    </el-button>
+  </div>
+  <div v-if="isEditMode" class="edit-mode-hint">
+    <el-icon><edit /></el-icon>
+    编辑模式：点击拖拽建筑调整位置，点击空白处退出编辑
+  </div>
     <div class="canvas-wrapper" ref="canvasContainer"></div>
 
     <!-- 建筑信息悬浮卡片 -->
@@ -51,6 +63,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Edit } from '@element-plus/icons-vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useContainerStore } from '../stores/container'
@@ -65,6 +78,7 @@ const canvasContainer = ref<HTMLElement>()
 const hoveredBuilding = ref<ContainerTreeNode | null>(null)
 const hoverX = ref(0)
 const hoverY = ref(0)
+const isEditMode = ref(false)
 
 // 新建建筑
 interface AttrItem { key: string; value: string }
@@ -153,8 +167,8 @@ function init() {
   const el = canvasContainer.value
 
   scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x0a1628)
-  scene.fog = new THREE.Fog(0x0a1628, 200, 500)
+  scene.background = new THREE.Color(0xf0f4f8)
+  scene.fog = new THREE.Fog(0xf0f4f8, 200, 500)
 
   camera = new THREE.PerspectiveCamera(50, el.clientWidth / el.clientHeight, 0.1, 1000)
   camera.position.set(0, 80, 120)
@@ -173,8 +187,8 @@ function init() {
   controls.maxDistance = 300
 
   // 光照
-  scene.add(new THREE.AmbientLight(0x404060, 2))
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1.5)
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8))
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.2)
   dirLight.position.set(50, 80, 50)
   dirLight.castShadow = true
   scene.add(dirLight)
@@ -182,7 +196,7 @@ function init() {
   // 地面
   ground = new THREE.Mesh(
     new THREE.PlaneGeometry(400, 400),
-    new THREE.MeshStandardMaterial({ color: 0x0d1f3c, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0xe8ecef, roughness: 0.9 })
   )
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
@@ -190,7 +204,7 @@ function init() {
   scene.add(ground)
 
   // 网格
-  scene.add(new THREE.GridHelper(400, 40, 0x1a3355, 0x112244))
+  scene.add(new THREE.GridHelper(400, 40, 0x4a90d9, 0xd1d9e0))
 
   raycaster = new THREE.Raycaster()
   mouse = new THREE.Vector2()
@@ -237,10 +251,10 @@ function onResize() {
 }
 
 function getBuildingColor(name: string): number {
-  if (name.includes('图书') || name.includes('Library')) return 0x4fc3f7
-  if (name.includes('行政') || name.includes('Admin')) return 0xffb74d
-  if (name.includes('实验') || name.includes('Lab')) return 0x81c784
-  return 0x64b5f6
+  if (name.includes('图书') || name.includes('Library')) return 0x6ab7e8
+  if (name.includes('行政') || name.includes('Admin')) return 0xf5c87a
+  if (name.includes('实验') || name.includes('Lab')) return 0x8ed09e
+  return 0x7ab5e0
 }
 
 function buildCampus(buildings: ContainerTreeNode[]) {
@@ -364,7 +378,7 @@ function onClick(event: MouseEvent) {
 }
 
 function onMouseDown(event: MouseEvent) {
-  if (!auth.isAdmin) return
+  if (!auth.isAdmin || !isEditMode.value) return
   if (!canvasContainer.value) return
 
   const rect = renderer.domElement.getBoundingClientRect()
@@ -412,6 +426,13 @@ function onMouseUp() {
     draggingMesh = null
     dragPlane = null
     controls.enabled = true
+  }
+}
+
+function toggleEditMode() {
+  isEditMode.value = !isEditMode.value
+  if (!isEditMode.value && draggingMesh) {
+    onMouseUp()
   }
 }
 
@@ -482,7 +503,7 @@ onUnmounted(dispose)
 <style scoped>
 .campus-page {
   min-height: 100vh;
-  background: #0a1628;
+  background: #fafbfc;
   position: relative;
 }
 .toolbar {
@@ -495,37 +516,54 @@ onUnmounted(dispose)
   gap: 12px;
 }
 .toolbar-title {
-  color: #8ab4f8;
-  font-size: 18px;
+  color: #2d3748;
+  font-size: 17px;
   font-weight: 500;
 }
 .canvas-wrapper {
   width: 100vw;
   height: 100vh;
 }
+.edit-mode-hint {
+  position: absolute;
+  top: 52px;
+  left: 16px;
+  z-index: 10;
+  background: #fef3c7;
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: #d97706;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .hover-card {
   position: absolute;
   z-index: 20;
-  background: rgba(15, 39, 68, 0.95);
-  border: 1px solid #42a5f5;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 .hover-card h4 {
-  color: #64b5f6;
-  margin: 0 0 6px 0;
+  color: #2d3748;
+  margin: 0 0 8px 0;
   font-size: 15px;
+  font-weight: 500;
 }
 .hover-card p {
-  color: #e0e6ed;
-  margin: 2px 0;
+  color: #4a5568;
+  margin: 3px 0;
   font-size: 13px;
 }
 .click-hint {
-  color: #5a7a9a;
-  font-size: 11px;
-  margin-top: 4px !important;
+  color: #a0aec0;
+  font-size: 12px;
+  margin-top: 6px !important;
 }
 .kv-row {
   display: flex;
@@ -534,7 +572,7 @@ onUnmounted(dispose)
   margin-bottom: 6px;
 }
 .pos-label {
-  color: #8ab4f8;
+  color: #718096;
   font-size: 13px;
   min-width: 24px;
   text-align: right;
