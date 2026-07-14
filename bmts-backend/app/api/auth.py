@@ -212,8 +212,7 @@ async def delete_account(
     
     org_result = await db.execute(
         select(Organization).join(OrganizationMember).where(
-            OrganizationMember.user_id == current_user.id,
-            OrganizationMember.role == 'owner'
+            OrganizationMember.user_id == current_user.id
         )
     )
     orgs = org_result.scalars().all()
