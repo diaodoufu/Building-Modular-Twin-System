@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from sqlalchemy import select
+from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import re
@@ -200,10 +200,14 @@ async def delete_account(
     db: AsyncSession = Depends(get_db),
 ):
     """删除当前用户账户及相关数据"""
-    from app.models.models import Organization, OrganizationMember, Container, Reservation
+    from app.models.models import Organization, OrganizationMember, Reservation
     
     await db.execute(
         delete(Reservation).where(Reservation.user_id == current_user.id)
+    )
+    
+    await db.execute(
+        update(Reservation).where(Reservation.reviewed_by == current_user.id).values(reviewed_by=None)
     )
     
     org_result = await db.execute(
@@ -215,10 +219,6 @@ async def delete_account(
     orgs = org_result.scalars().all()
     for org in orgs:
         await db.delete(org)
-    
-    await db.execute(
-        delete(OrganizationMember).where(OrganizationMember.user_id == current_user.id)
-    )
     
     await db.delete(current_user)
     await db.commit()
