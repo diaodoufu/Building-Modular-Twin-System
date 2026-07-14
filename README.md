@@ -238,6 +238,10 @@ npx vite --host
 
 完整 API 文档请访问运行中的后端 `/docs` 端点。
 
+## 部署
+
+详细的本地部署指南请参考 [DEPLOYMENT.md](DEPLOYMENT.md)，包含 Windows/macOS/Linux 三平台的完整步骤。
+
 ## 贡献
 
 欢迎贡献！请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解贡献流程。
