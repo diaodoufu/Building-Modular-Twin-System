@@ -251,7 +251,7 @@
       :parent-id="campus?.id"
       :lock-parent-id="true"
       :lock-type="true"
-      @close="showAddContainer = false"
+      @update:visible="showAddContainer = false"
       @created="onContainerCreated"
     />
 

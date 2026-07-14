@@ -1,5 +1,5 @@
 <template>
-  <el-dialog :visible="visible" :title="dialogTitle" width="560px" :close-on-click-modal="false" @close="handleClose">
+  <el-dialog v-model="visible" :title="dialogTitle" width="560px" :close-on-click-modal="false">
     <el-form label-width="90px">
       <el-form-item label="容器类型">
         <el-select v-model="form.type" style="width:100%" @change="onTypeChange" :disabled="lockType">
@@ -75,12 +75,17 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'close'): void
+  (e: 'update:visible', value: boolean): void
   (e: 'created'): void
 }>()
 
 const store = useContainerStore()
 const loading = ref(false)
+
+const visible = computed({
+  get: () => props.visible,
+  set: (val) => emit('update:visible', val),
+})
 
 const form = ref({
   type: 'building' as 'building' | 'floor' | 'room' | 'resource',
@@ -264,7 +269,7 @@ async function handleSubmit() {
 }
 
 function handleClose() {
-  emit('close')
+  emit('update:visible', false)
 }
 </script>
 

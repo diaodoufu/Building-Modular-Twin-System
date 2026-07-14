@@ -94,7 +94,7 @@
       :position="containerCreatePosition"
       :lock-parent-id="true"
       :lock-type="true"
-      @close="showContainerCreate = false"
+      @update:visible="showContainerCreate = false"
       @created="onContainerCreated"
     />
   </div>
