@@ -15,7 +15,7 @@
   </div>
   <div v-if="isEditMode" class="edit-mode-hint">
     <el-icon><edit /></el-icon>
-    编辑模式：点击拖拽建筑调整位置，点击空白处退出编辑
+    编辑模式：拖拽建筑调整位置，释放后确认保存
   </div>
     <div class="canvas-wrapper" ref="canvasContainer"></div>
 
@@ -64,6 +64,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Edit } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { useContainerStore } from '../stores/container'
@@ -160,6 +161,7 @@ const buildingData: Map<string, ContainerTreeNode> = new Map()
 let draggingMesh: THREE.Mesh | null = null
 let dragPlane: THREE.Plane | null = null
 let dragOffset = new THREE.Vector3()
+let dragOriginalPos = new THREE.Vector3()
 
 function init() {
   if (!canvasContainer.value) return
@@ -372,7 +374,9 @@ function onClick(event: MouseEvent) {
       target = target.parent as THREE.Mesh
     }
     if (target?.userData?.buildingId) {
-      router.push({ name: 'building', params: { id: target.userData.buildingId } })
+      if (!isEditMode.value) {
+        router.push({ name: 'building', params: { id: target.userData.buildingId } })
+      }
     }
   }
 }
@@ -397,6 +401,7 @@ function onMouseDown(event: MouseEvent) {
     if (obj?.userData?.buildingId) {
       controls.enabled = false
       draggingMesh = obj
+      dragOriginalPos.copy(obj.position)
 
       dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
       const intersectPoint = new THREE.Vector3()
@@ -408,7 +413,7 @@ function onMouseDown(event: MouseEvent) {
   }
 }
 
-function onMouseUp() {
+async function onMouseUp() {
   if (draggingMesh) {
     const buildingId = draggingMesh.userData?.buildingId
     if (buildingId) {
@@ -417,9 +422,28 @@ function onMouseUp() {
         const newX = Math.round(draggingMesh.position.x)
         const newZ = Math.round(draggingMesh.position.z)
         if (newX !== bld.position?.x || newZ !== bld.position?.z) {
-          containerApi.update(buildingId, {
-            position: { x: newX, y: 0, z: newZ },
-          })
+          try {
+            await ElMessageBox.confirm(
+              `确认保存建筑「${bld.name}」的位置变更？\n原位置: (${bld.position?.x || 0}, ${bld.position?.z || 0})\n新位置: (${newX}, ${newZ})`,
+              '保存位置',
+              { confirmButtonText: '保存', cancelButtonText: '取消', type: 'warning' }
+            )
+            await containerApi.update(buildingId, {
+              position: { x: newX, y: 0, z: newZ },
+            })
+            ElMessage.success('位置已保存')
+            await store.fetchTree()
+            const updated = store.tree[0]
+            if (updated?.children?.length) {
+              buildCampus(updated.children)
+            }
+          } catch {
+            draggingMesh.position.copy(dragOriginalPos)
+            draggingMesh = null
+            dragPlane = null
+            controls.enabled = true
+            return
+          }
         }
       }
     }
@@ -429,11 +453,11 @@ function onMouseUp() {
   }
 }
 
-function toggleEditMode() {
-  isEditMode.value = !isEditMode.value
-  if (!isEditMode.value && draggingMesh) {
-    onMouseUp()
+async function toggleEditMode() {
+  if (isEditMode.value && draggingMesh) {
+    await onMouseUp()
   }
+  isEditMode.value = !isEditMode.value
 }
 
 function onMouseMove(event: MouseEvent) {
