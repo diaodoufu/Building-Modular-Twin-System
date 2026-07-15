@@ -320,7 +320,16 @@ async def update_invite_code(
     else:
         import random
         import string
-        org.invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        for _ in range(5):
+            new_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+            existing = await db.execute(
+                select(Organization).where(Organization.invite_code == new_code)
+            )
+            if not existing.scalar_one_or_none():
+                org.invite_code = new_code
+                break
+        else:
+            raise HTTPException(status_code=500, detail="邀请码生成失败，请重试")
 
     await db.commit()
     await db.refresh(org)
