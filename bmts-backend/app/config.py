@@ -29,6 +29,10 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+# 兼容普通postgresql协议，自动转换为asyncpg异步驱动
+if settings.DATABASE_URL.startswith("postgresql://"):
+    settings.DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # 未设置SECRET_KEY时自动生成（仅限开发环境）
 if not settings.SECRET_KEY:
     settings.SECRET_KEY = secrets.token_urlsafe(32)
