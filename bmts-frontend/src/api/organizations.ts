@@ -67,6 +67,12 @@ export const orgApi = {
     return api.post<OrganizationRead>('/orgs', data)
   },
   /**
+   * 通过邀请码直接加入组织（只需邀请码）
+   */
+  joinByCode(inviteCode: string) {
+    return api.post<JoinResult>('/orgs/join-by-code', { invite_code: inviteCode })
+  },
+  /**
    * 加入组织
    * @param inviteCode 提供则走"直接加入"路径；不提供则发起审核申请
    * @param message 申请留言（仅审核流程有效）

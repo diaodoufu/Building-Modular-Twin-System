@@ -130,6 +130,39 @@ async def create_organization(
     return org
 
 
+@router.post("/join-by-code", response_model=JoinResult)
+async def join_organization_by_code(
+    invite_code: str = Body(..., embed=True, description="邀请码"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """通过邀请码直接加入组织（只需邀请码，无需组织ID）"""
+    result = await db.execute(
+        select(Organization).where(Organization.invite_code == invite_code)
+    )
+    org = result.scalar_one_or_none()
+
+    if not org:
+        raise HTTPException(status_code=400, detail="邀请码无效或组织不存在")
+
+    if await _get_membership(db, org.id, current_user.id):
+        raise HTTPException(status_code=400, detail="已加入该组织")
+
+    member = OrganizationMember(
+        org_id=org.id,
+        user_id=current_user.id,
+        role="member",
+    )
+    db.add(member)
+    await db.commit()
+    return JoinResult(
+        status="joined",
+        message=f"已加入组织：{org.name}",
+        org_id=org.id,
+        role="member",
+    )
+
+
 @router.post("/{org_id}/join", response_model=JoinResult)
 async def join_organization(
     org_id: UUID,

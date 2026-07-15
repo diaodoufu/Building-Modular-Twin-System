@@ -285,11 +285,8 @@
         <!-- 邀请码加入 -->
         <el-tab-pane label="邀请码加入" name="invite">
           <el-form label-width="80px">
-            <el-form-item label="组织ID">
-              <el-input v-model="inviteForm.orgId" placeholder="组织ID" />
-            </el-form-item>
             <el-form-item label="邀请码">
-              <el-input v-model="inviteForm.inviteCode" placeholder="邀请码" />
+              <el-input v-model="inviteForm.inviteCode" placeholder="输入邀请码" />
             </el-form-item>
             <el-button type="primary" @click="handleJoinByCode" :loading="joinLoading === 'invite'">直接加入</el-button>
           </el-form>
@@ -655,21 +652,19 @@ async function handleJoinOrg(org: OrganizationRead) {
 }
 
 async function handleJoinByCode() {
-  if (!inviteForm.value.orgId || !inviteForm.value.inviteCode) {
-    ElMessage.warning('请填写组织ID和邀请码')
+  if (!inviteForm.value.inviteCode) {
+    ElMessage.warning('请填写邀请码')
     return
   }
   joinLoading.value = 'invite'
   try {
-    const result = await auth.joinOrganization(inviteForm.value.orgId, inviteForm.value.inviteCode)
-    if (result.status === 'joined') {
-      ElMessage.success('加入成功')
+    const { data } = await orgApi.joinByCode(inviteForm.value.inviteCode)
+    if (data.status === 'joined') {
+      ElMessage.success(data.message || '加入成功')
       inviteForm.value = { orgId: '', inviteCode: '' }
+      await auth.fetchMe()
       await store.fetchTree()
       await fetchMyJoinRequests()
-    } else {
-      // 走到这里的可能性：组织未设置 invite_code 时后端会返回 400，不会进入此分支
-      ElMessage.info(result.message || '申请已发送')
     }
   } catch (e: any) {
     ElMessage.error(e.response?.data?.detail || '加入失败')
