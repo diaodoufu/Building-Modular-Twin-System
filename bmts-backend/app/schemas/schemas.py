@@ -148,3 +148,39 @@ class RoomAvailability(BaseModel):
     date: str  # YYYY-MM-DD
     slots: list[dict[str, Any]]  # [{start, end, status, reservation_id}]
 
+
+# ============ 组织加入申请 Schemas ============
+
+class JoinRequestCreate(BaseModel):
+    """发起加入申请（搜索加入）"""
+    message: str | None = None
+
+
+class JoinRequestRead(BaseModel):
+    """加入申请详情"""
+    id: uuid.UUID
+    org_id: uuid.UUID
+    user_id: uuid.UUID
+    username: str  # 申请人用户名（便于审核方识别）
+    display_name: str
+    status: str  # pending|approved|rejected
+    message: str | None
+    reviewed_by: uuid.UUID | None
+    reviewed_at: datetime | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class JoinResult(BaseModel):
+    """加入组织接口统一返回结构
+
+    - 直接加入：status='joined'
+    - 申请待审核：status='pending'
+    """
+    status: str  # joined|pending
+    message: str
+    org_id: uuid.UUID
+    role: str | None = None  # 仅 status=joined 时有值
+    request_id: uuid.UUID | None = None  # 仅 status=pending 时有值
+

@@ -65,6 +65,32 @@ class User(Base):
     reviewed_reservations: Mapped[list["Reservation"]] = relationship(foreign_keys="Reservation.reviewed_by", back_populates="reviewer")
 
 
+class OrganizationJoinRequest(Base):
+    """组织加入申请表
+
+    用于"按名称搜索"方式的加入申请审核流程。
+    邀请码加入不走此表，直接落 OrganizationMember。
+    """
+    __tablename__ = "organization_join_requests"
+    __table_args__ = (
+        Index("idx_join_requests_org_status", "org_id", "status"),
+        Index("idx_join_requests_user", "user_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")  # pending|approved|rejected
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    organization: Mapped["Organization"] = relationship(foreign_keys=[org_id])
+    user: Mapped["User"] = relationship(foreign_keys=[user_id])
+    reviewer: Mapped["User | None"] = relationship(foreign_keys=[reviewed_by])
+
+
 class Container(Base):
     """核心容器表 - 所有空间实体共用"""
     __tablename__ = "containers"

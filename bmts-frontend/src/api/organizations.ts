@@ -19,6 +19,29 @@ export interface OrgMemberInfo {
   role: string
 }
 
+/** 加入组织接口返回结果 */
+export interface JoinResult {
+  status: 'joined' | 'pending'
+  message: string
+  org_id: string
+  role?: string | null
+  request_id?: string | null
+}
+
+/** 加入申请记录 */
+export interface JoinRequestRead {
+  id: string
+  org_id: string
+  user_id: string
+  username: string
+  display_name: string
+  status: 'pending' | 'approved' | 'rejected'
+  message: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+}
+
 export const orgApi = {
   list() {
     return api.get<OrganizationRead[]>('/orgs')
@@ -43,12 +66,34 @@ export const orgApi = {
   }) {
     return api.post<OrganizationRead>('/orgs', data)
   },
-  join(orgId: string, inviteCode?: string) {
+  /**
+   * 加入组织
+   * @param inviteCode 提供则走"直接加入"路径；不提供则发起审核申请
+   * @param message 申请留言（仅审核流程有效）
+   */
+  join(orgId: string, inviteCode?: string, message?: string) {
     const params: Record<string, string> = {}
     if (inviteCode) params.invite_code = inviteCode
-    return api.post<{ message: string; org_id: string; role: string }>(`/orgs/${orgId}/join`, null, { params })
+    const body = message ? { message } : null
+    return api.post<JoinResult>(`/orgs/${orgId}/join`, body, { params })
   },
   leave(orgId: string) {
     return api.post<{ message: string }>(`/orgs/${orgId}/leave`)
+  },
+  /** 当前用户的所有加入申请 */
+  myJoinRequests() {
+    return api.get<JoinRequestRead[]>('/orgs/my-join-requests')
+  },
+  /** 某组织的加入申请列表（管理员） */
+  listJoinRequests(orgId: string, statusFilter?: 'pending' | 'approved' | 'rejected') {
+    const params: Record<string, string> = {}
+    if (statusFilter) params.status_filter = statusFilter
+    return api.get<JoinRequestRead[]>(`/orgs/${orgId}/join-requests`, { params })
+  },
+  approveJoinRequest(orgId: string, requestId: string) {
+    return api.post<JoinRequestRead>(`/orgs/${orgId}/join-requests/${requestId}/approve`)
+  },
+  rejectJoinRequest(orgId: string, requestId: string) {
+    return api.post<JoinRequestRead>(`/orgs/${orgId}/join-requests/${requestId}/reject`)
   },
 }

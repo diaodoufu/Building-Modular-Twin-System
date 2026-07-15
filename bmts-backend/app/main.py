@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.api import auth, containers, data, health, organizations, reservations, stats
 from app.database import init_db
-from app.models.models import Organization, OrganizationMember, User, Container, Reservation  # noqa: 确保所有模型被导入
+from app.models.models import Organization, OrganizationMember, User, Container, Reservation, OrganizationJoinRequest  # noqa: 确保所有模型被导入
 
 
 @asynccontextmanager

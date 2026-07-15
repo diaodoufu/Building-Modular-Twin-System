@@ -80,38 +80,38 @@ async function handleSubmit() {
 
 <style scoped>
 .login-page {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #fafbfc;
+  padding: 20px;
 }
 .login-card {
   width: 380px;
-  padding: 48px 40px;
+  padding: 40px;
   background: #ffffff;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
 }
 @media (max-width: 480px) {
-  .login-card { width: 100%; padding: 32px 24px; border-radius: 0; border: none; }
+  .login-card { width: 100%; padding: 24px; border-radius: 0; border: none; }
 }
 .title {
   color: #2d3748;
   text-align: center;
-  font-size: 24px;
+  font-size: 28px;
+  margin-bottom: 4px;
   font-weight: 600;
-  margin-bottom: 8px;
-  letter-spacing: -0.3px;
 }
 .subtitle {
   color: #718096;
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   font-size: 14px;
 }
 .tabs {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 .error {
   color: #dc2626;

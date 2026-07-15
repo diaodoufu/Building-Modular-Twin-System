@@ -202,17 +202,17 @@ watch(visible, (v) => {
 .room-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: #f7fafc;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #0f2744;
   border-radius: 8px;
 }
 .room-name {
-  color: #2d3748;
+  color: #e0e6ed;
   font-weight: 500;
 }
 .room-capacity {
-  color: #718096;
+  color: #5a7a9a;
   font-size: 13px;
 }
 .time-range {
@@ -228,17 +228,16 @@ watch(visible, (v) => {
   padding: 8px 0;
 }
 .timeline-label {
-  color: #718096;
+  color: #5a7a9a;
   font-size: 11px;
   flex-shrink: 0;
 }
 .timeline-bar {
   flex: 1;
   display: flex;
-  height: 16px;
+  height: 20px;
   border-radius: 4px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
 }
 .timeline-slot {
   flex: 1;
@@ -246,12 +245,12 @@ watch(visible, (v) => {
   transition: all 0.15s;
 }
 .timeline-slot.available {
-  background: #dcfce7;
+  background: #1b5e20;
 }
 .timeline-slot.occupied {
-  background: #fee2e2;
+  background: #b71c1c;
 }
 .timeline-slot.selected {
-  background: #4a90d9;
+  background: #42a5f5;
 }
 </style>

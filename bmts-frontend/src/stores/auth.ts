@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '../api/index'
 import { authApi, type UserRead } from '../api/auth'
-import { orgApi, type OrganizationRead, type OrgMemberInfo } from '../api/organizations'
+import { orgApi, type OrganizationRead, type OrgMemberInfo, type JoinResult } from '../api/organizations'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<UserRead | null>(null)
@@ -96,9 +96,13 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('currentOrgId', orgId)
   }
 
-  async function joinOrganization(orgId: string, inviteCode?: string) {
-    await orgApi.join(orgId, inviteCode)
-    await fetchMe() // 刷新组织列表
+  async function joinOrganization(orgId: string, inviteCode?: string, message?: string): Promise<JoinResult> {
+    const { data } = await orgApi.join(orgId, inviteCode, message)
+    // 仅当真正加入后才刷新组织列表；申请中不需要刷新
+    if (data.status === 'joined') {
+      await fetchMe()
+    }
+    return data
   }
 
   async function leaveOrganization(orgId: string) {

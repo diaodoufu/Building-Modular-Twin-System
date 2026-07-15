@@ -6,7 +6,7 @@ import bcrypt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.models import Organization, OrganizationMember, User
+from app.models.models import User
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -30,14 +30,6 @@ async def create_user(db: AsyncSession, username: str, password: str, display_na
     hashed = hash_password(password)
     user = User(username=username, password=hashed, display_name=display_name)
     db.add(user)
-    await db.flush()
-
-    org = Organization(name=f"{display_name}的组织", slug=f"org-{user.id}", org_type="campus")
-    db.add(org)
-    await db.flush()
-    member = OrganizationMember(org_id=org.id, user_id=user.id, role="owner")
-    db.add(member)
-
     await db.commit()
     await db.refresh(user)
     return user

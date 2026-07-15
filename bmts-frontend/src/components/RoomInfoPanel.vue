@@ -75,12 +75,12 @@ const tagType = computed(() => {
   position: absolute;
   right: 20px;
   top: 20px;
-  width: 280px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  width: 300px;
+  background: rgba(15, 39, 68, 0.95);
+  border: 1px solid #1e3a5f;
+  border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
   z-index: 100;
 }
 .panel-header {
@@ -90,10 +90,8 @@ const tagType = computed(() => {
   margin-bottom: 16px;
 }
 .panel-header h3 {
-  color: #2d3748;
-  font-size: 17px;
-  margin: 0;
-  font-weight: 500;
+  color: #64b5f6;
+  font-size: 18px;
 }
 .panel-body {
   display: flex;
@@ -104,7 +102,7 @@ const tagType = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #4a5568;
+  color: #c0cad8;
   font-size: 14px;
 }
 .panel-actions {
@@ -113,15 +111,15 @@ const tagType = computed(() => {
   gap: 8px;
 }
 .label {
-  color: #718096;
+  color: #5a7a9a;
 }
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 .slide-enter-from,
 .slide-leave-to {
-  transform: translateX(12px);
+  transform: translateX(20px);
   opacity: 0;
 }
 </style>

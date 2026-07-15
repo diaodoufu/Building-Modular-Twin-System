@@ -29,9 +29,7 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-if settings.DATABASE_URL.startswith("postgresql://") and not settings.DATABASE_URL.startswith("postgresql+asyncpg://"):
-    settings.DATABASE_URL = settings.DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-
+# 未设置SECRET_KEY时自动生成（仅限开发环境）
 if not settings.SECRET_KEY:
     settings.SECRET_KEY = secrets.token_urlsafe(32)
     if settings.DEBUG:

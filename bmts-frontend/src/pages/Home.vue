@@ -256,7 +256,7 @@
     />
 
     <!-- 组织管理对话框 -->
-    <el-dialog v-model="showJoinOrg" title="组织管理" width="560px">
+    <el-dialog v-model="showJoinOrg" title="组织管理" width="560px" @open="onJoinDialogOpen">
       <el-tabs v-model="orgTab">
         <!-- 搜索加入 -->
         <el-tab-pane label="搜索加入" name="search">
@@ -267,14 +267,19 @@
               <span class="org-type-tag">{{ org.org_type }}</span>
               <span class="org-slug">{{ org.slug }}</span>
             </div>
-            <el-button
-              v-if="!auth.organizations.some(o => o.id === org.id)"
-              type="primary" size="small"
-              @click="handleJoinOrg(org)"
-            >加入</el-button>
-            <span v-else class="joined-tag">已加入</span>
+            <div class="org-actions">
+              <span v-if="isOrgJoined(org.id)" class="joined-tag">已加入</span>
+              <span v-else-if="isOrgPending(org.id)" class="pending-tag">申请中</span>
+              <el-button
+                v-else
+                type="primary" size="small"
+                :loading="joinLoading === org.id"
+                @click="handleJoinOrg(org)"
+              >申请加入</el-button>
+            </div>
           </div>
           <div v-if="orgSearchKeyword && orgSearchResults.length === 0" style="color:#5a7a9a;text-align:center;padding:20px">未找到组织</div>
+          <div class="dialog-tip">提示：搜索加入需组织管理员审核通过后方可加入。</div>
         </el-tab-pane>
 
         <!-- 邀请码加入 -->
@@ -286,12 +291,13 @@
             <el-form-item label="邀请码">
               <el-input v-model="inviteForm.inviteCode" placeholder="邀请码" />
             </el-form-item>
-            <el-button type="primary" @click="handleJoinByCode" :loading="joinLoading">加入</el-button>
+            <el-button type="primary" @click="handleJoinByCode" :loading="joinLoading === 'invite'">直接加入</el-button>
           </el-form>
+          <div class="dialog-tip">提示：邀请码正确即可直接加入组织（使用者身份），无需审核。</div>
         </el-tab-pane>
 
         <!-- 我的组织 -->
-        <el-tab-pane label="我的组织" name="mine">
+        <el-tab-pane :label="`我的组织(${auth.organizations.length})`" name="mine">
           <div v-for="org in auth.organizations" :key="org.id" class="org-item">
             <div class="org-info">
               <span class="org-name">{{ org.name }}</span>
@@ -316,6 +322,20 @@
           </div>
           <div v-if="auth.organizations.length === 0" style="color:#5a7a9a;text-align:center;padding:20px">暂未加入任何组织</div>
         </el-tab-pane>
+
+        <!-- 我的申请 -->
+        <el-tab-pane :label="`我的申请(${myJoinRequests.length})`" name="requests">
+          <div v-for="req in myJoinRequests" :key="req.id" class="org-item">
+            <div class="org-info">
+              <span class="org-name">{{ orgNameMap[req.org_id] || req.org_id.slice(0, 8) }}</span>
+              <span class="status-tag" :class="req.status">{{ joinStatusText(req.status) }}</span>
+              <span class="org-slug">{{ formatRequestTime(req.created_at) }}</span>
+            </div>
+            <span v-if="req.message" class="req-message" :title="req.message">「{{ req.message }}」</span>
+          </div>
+          <div v-if="myJoinRequests.length === 0" style="color:#5a7a9a;text-align:center;padding:20px">暂无申请记录</div>
+          <div class="dialog-tip">提示：被拒绝后可重新申请加入该组织。</div>
+        </el-tab-pane>
       </el-tabs>
     </el-dialog>
   </div>
@@ -329,7 +349,7 @@ import { ArrowDown } from '@element-plus/icons-vue'
 import { useContainerStore } from '../stores/container'
 import { useAuthStore } from '../stores/auth'
 import { containerApi, type ContainerTreeNode } from '../api/containers'
-import { orgApi, type OrganizationRead } from '../api/organizations'
+import { orgApi, type OrganizationRead, type JoinRequestRead } from '../api/organizations'
 import { reservationApi, type ReservationRead } from '../api/reservations'
 import { authApi } from '../api/auth'
 import ContainerCreate from '../components/ContainerCreate.vue'
@@ -541,8 +561,10 @@ const showJoinOrg = ref(false)
 const orgTab = ref('search')
 const orgSearchKeyword = ref('')
 const orgSearchResults = ref<OrganizationRead[]>([])
-const joinLoading = ref(false)
+// joinLoading 同时承担多个按钮的 loading 状态：'invite' 表示邀请码表单，org.id 表示对应组织
+const joinLoading = ref<string | null>(null)
 const inviteForm = ref({ orgId: '', inviteCode: '' })
+const myJoinRequests = ref<JoinRequestRead[]>([])
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 function handleOrgSearch() {
@@ -561,16 +583,63 @@ function handleOrgSearch() {
   }, 300)
 }
 
-async function handleJoinOrg(org: OrganizationRead) {
-  joinLoading.value = true
+/** 我已加入的组织ID集合 */
+function isOrgJoined(orgId: string): boolean {
+  return auth.organizations.some(o => o.id === orgId)
+}
+/** 该组织是否存在 pending 申请 */
+function isOrgPending(orgId: string): boolean {
+  return myJoinRequests.value.some(r => r.org_id === orgId && r.status === 'pending')
+}
+
+/** 申请状态中文 */
+function joinStatusText(status: string): string {
+  const map: Record<string, string> = { pending: '申请中', approved: '已通过', rejected: '已拒绝' }
+  return map[status] || status
+}
+
+function formatRequestTime(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+/** 申请列表里的组织名称映射：优先用已加入组织的名称，其次用搜索结果缓存 */
+const orgNameMap = computed(() => {
+  const map: Record<string, string> = {}
+  for (const org of auth.organizations) map[org.id] = org.name
+  for (const org of orgSearchResults.value) map[org.id] = org.name
+  return map
+})
+
+async function fetchMyJoinRequests() {
   try {
-    await auth.joinOrganization(org.id)
-    ElMessage.success(`已加入组织：${org.name}`)
-    await store.fetchTree()
+    const { data } = await orgApi.myJoinRequests()
+    myJoinRequests.value = data
+  } catch {
+    myJoinRequests.value = []
+  }
+}
+
+function onJoinDialogOpen() {
+  // 打开对话框时拉取最新申请列表
+  fetchMyJoinRequests()
+}
+
+async function handleJoinOrg(org: OrganizationRead) {
+  joinLoading.value = org.id
+  try {
+    const result = await auth.joinOrganization(org.id)
+    if (result.status === 'joined') {
+      ElMessage.success(`已加入组织：${org.name}`)
+      await store.fetchTree()
+    } else {
+      ElMessage.success('申请已发送，等待组织管理员审核')
+    }
+    await fetchMyJoinRequests()
   } catch (e: any) {
     ElMessage.error(e.response?.data?.detail || '加入失败')
   } finally {
-    joinLoading.value = false
+    joinLoading.value = null
   }
 }
 
@@ -579,16 +648,22 @@ async function handleJoinByCode() {
     ElMessage.warning('请填写组织ID和邀请码')
     return
   }
-  joinLoading.value = true
+  joinLoading.value = 'invite'
   try {
-    await auth.joinOrganization(inviteForm.value.orgId, inviteForm.value.inviteCode)
-    ElMessage.success('加入成功')
-    inviteForm.value = { orgId: '', inviteCode: '' }
-    await store.fetchTree()
+    const result = await auth.joinOrganization(inviteForm.value.orgId, inviteForm.value.inviteCode)
+    if (result.status === 'joined') {
+      ElMessage.success('加入成功')
+      inviteForm.value = { orgId: '', inviteCode: '' }
+      await store.fetchTree()
+      await fetchMyJoinRequests()
+    } else {
+      // 走到这里的可能性：组织未设置 invite_code 时后端会返回 400，不会进入此分支
+      ElMessage.info(result.message || '申请已发送')
+    }
   } catch (e: any) {
     ElMessage.error(e.response?.data?.detail || '加入失败')
   } finally {
-    joinLoading.value = false
+    joinLoading.value = null
   }
 }
 
@@ -1106,6 +1181,42 @@ h1 {
 .joined-tag {
   color: #16a34a;
   font-size: 12px;
+}
+.pending-tag {
+  color: #d97706;
+  font-size: 12px;
+}
+.status-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 4px;
+}
+.status-tag.pending {
+  background: #fef3c7;
+  color: #d97706;
+}
+.status-tag.approved {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.status-tag.rejected {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.req-message {
+  color: #a0aec0;
+  font-size: 12px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dialog-tip {
+  margin-top: 16px;
+  color: #a0aec0;
+  font-size: 12px;
+  text-align: center;
 }
 .current-tag {
   color: #4a90d9;
