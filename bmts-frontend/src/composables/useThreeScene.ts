@@ -24,6 +24,7 @@ export function useThreeScene(container: Ref<HTMLElement | undefined>) {
   const highlightedRoom = ref<string | null>(null)
   const onRoomClick = ref<((roomId: string) => void) | null>(null)
   const onGroundClick = ref<((x: number, z: number) => void) | null>(null)
+  const onRoomMove = ref<((roomId: string, x: number, z: number) => void) | null>(null)
   let ground: THREE.Mesh | null = null
 
   function init() {
@@ -224,6 +225,9 @@ export function useThreeScene(container: Ref<HTMLElement | undefined>) {
     mat.opacity = 0.85
   }
 
+  function setEditMode(_enabled: boolean) {
+  }
+
   return {
     init,
     dispose,
@@ -233,5 +237,7 @@ export function useThreeScene(container: Ref<HTMLElement | undefined>) {
     highlightedRoom,
     onRoomClick,
     onGroundClick,
+    onRoomMove,
+    setEditMode,
   }
 }
