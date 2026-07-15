@@ -701,7 +701,7 @@ async function handleRegenInviteCode(orgId: string) {
 
 async function handleClearInviteCode(orgId: string) {
   try {
-    const { data } = await orgApi.clearInviteCode(orgId)
+    await orgApi.clearInviteCode(orgId)
     const org = auth.organizations.find(o => o.id === orgId)
     if (org) org.invite_code = null
     ElMessage.success('邀请码已清除')
