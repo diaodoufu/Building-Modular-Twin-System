@@ -301,6 +301,51 @@ async def reject_join_request(
     return await _build_join_request_read(db, join_req)
 
 
+@router.put("/{org_id}/invite-code", response_model=OrganizationRead)
+async def update_invite_code(
+    org_id: UUID,
+    invite_code: str | None = Body(None, description="新邀请码（不传则自动生成）"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新组织邀请码（仅 owner/admin 可操作）"""
+    await _require_org_admin(db, org_id, current_user)
+
+    org = await get_org(db, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="组织不存在")
+
+    if invite_code:
+        org.invite_code = invite_code
+    else:
+        import random
+        import string
+        org.invite_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+    await db.commit()
+    await db.refresh(org)
+    return org
+
+
+@router.delete("/{org_id}/invite-code", response_model=OrganizationRead)
+async def clear_invite_code(
+    org_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """清除组织邀请码（仅 owner/admin 可操作）"""
+    await _require_org_admin(db, org_id, current_user)
+
+    org = await get_org(db, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="组织不存在")
+
+    org.invite_code = None
+    await db.commit()
+    await db.refresh(org)
+    return org
+
+
 @router.post("/{org_id}/leave", response_model=dict)
 async def leave_organization(
     org_id: UUID,

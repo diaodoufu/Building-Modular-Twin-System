@@ -96,4 +96,10 @@ export const orgApi = {
   rejectJoinRequest(orgId: string, requestId: string) {
     return api.post<JoinRequestRead>(`/orgs/${orgId}/join-requests/${requestId}/reject`)
   },
+  updateInviteCode(orgId: string, inviteCode?: string) {
+    return api.put<OrganizationRead>(`/orgs/${orgId}/invite-code`, inviteCode ? { invite_code: inviteCode } : {})
+  },
+  clearInviteCode(orgId: string) {
+    return api.delete<OrganizationRead>(`/orgs/${orgId}/invite-code`)
+  },
 }

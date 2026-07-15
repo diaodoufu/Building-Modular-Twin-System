@@ -305,6 +305,7 @@
               <span class="role-badge" :class="auth.memberships.find(m => m.org_id === org.id)?.role">
                 {{ auth.memberships.find(m => m.org_id === org.id)?.role }}
               </span>
+              <span v-if="org.invite_code" class="invite-code">邀请码: {{ org.invite_code }}</span>
             </div>
             <div class="org-actions">
               <el-button
@@ -313,6 +314,10 @@
                 @click="onOrgSwitch(org.id)"
               >切换</el-button>
               <span v-else class="current-tag">当前</span>
+              <template v-if="isOrgAdmin(org.id)">
+                <el-button type="info" text size="small" @click="handleRegenInviteCode(org.id)">重新生成邀请码</el-button>
+                <el-button v-if="org.invite_code" type="warning" text size="small" @click="handleClearInviteCode(org.id)">清除邀请码</el-button>
+              </template>
               <el-button
                 v-if="auth.memberships.find(m => m.org_id === org.id)?.role !== 'owner'"
                 type="danger" text size="small"
@@ -592,6 +597,12 @@ function isOrgPending(orgId: string): boolean {
   return myJoinRequests.value.some(r => r.org_id === orgId && r.status === 'pending')
 }
 
+/** 是否为该组织的管理员（owner/admin） */
+function isOrgAdmin(orgId: string): boolean {
+  const role = auth.memberships.find(m => m.org_id === orgId)?.role
+  return role === 'owner' || role === 'admin'
+}
+
 /** 申请状态中文 */
 function joinStatusText(status: string): string {
   const map: Record<string, string> = { pending: '申请中', approved: '已通过', rejected: '已拒绝' }
@@ -674,6 +685,28 @@ async function handleLeaveOrg(orgId: string) {
     await store.fetchTree()
   } catch (e: any) {
     ElMessage.error(e.response?.data?.detail || '退出失败')
+  }
+}
+
+async function handleRegenInviteCode(orgId: string) {
+  try {
+    const { data } = await orgApi.updateInviteCode(orgId)
+    const org = auth.organizations.find(o => o.id === orgId)
+    if (org) org.invite_code = data.invite_code
+    ElMessage.success(`邀请码已更新：${data.invite_code}`)
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.detail || '更新失败')
+  }
+}
+
+async function handleClearInviteCode(orgId: string) {
+  try {
+    const { data } = await orgApi.clearInviteCode(orgId)
+    const org = auth.organizations.find(o => o.id === orgId)
+    if (org) org.invite_code = null
+    ElMessage.success('邀请码已清除')
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.detail || '清除失败')
   }
 }
 
@@ -1221,6 +1254,12 @@ h1 {
 .current-tag {
   color: #4a90d9;
   font-size: 12px;
+}
+.invite-code {
+  color: #4a90d9;
+  font-size: 12px;
+  margin-left: 8px;
+  font-family: monospace;
 }
 .user-menu {
   cursor: pointer;
